@@ -1,0 +1,48 @@
+# Nuxt dev/build outputs
+.output
+.data
+.nuxt
+.nitro
+.cache
+dist
+
+# Node dependencies
+node_modules
+
+# Logs
+logs
+*.log
+
+# Misc
+.DS_Store
+.fleet
+.idea
+
+# Local env files
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+
+# Local databases & dumps — never track (local-only data)
+*.db
+*.sqlite
+*.sqlite3
+.wrangler/
+d1/
+prisma/
+
+# One-off scripts & local tooling — not for GitHub
+scripts/
+
+# Keep dumps out; fonts/assets are fine to track
+*.sql
+# drizzle migrations must be tracked
+!server/database/migrations/**/*.sql
+.scratch/
+
+# Secrets
+.env
+.env.*
+!.env.example

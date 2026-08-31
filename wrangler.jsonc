@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "portfolio-nuxt",
+  "main": ".output/server/index.mjs",
+  "compatibility_date": "2026-08-27",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./.output/public",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "portfolio",
+      "database_id": "1e6154e1-8d04-473c-bd85-c637f9178018",
+      "migrations_dir": "server/database/migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "UPLOADS",
+      "bucket_name": "portfolio-uploads"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}
