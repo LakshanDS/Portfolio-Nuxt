@@ -1,5 +1,5 @@
 // Registration status check.
-// Returns the TOTP QR code (rendered server-side via qrcode) plus a
+// Returns the TOTP QR code (rendered server-side via uqr) plus a
 // CSRF token, and persists the pending secret as an unverified User row in D1.
 
 import { TOTP } from "otpauth";
