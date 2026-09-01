@@ -3,7 +3,7 @@
 // CSRF token, and persists the pending secret as an unverified User row in D1.
 
 import { TOTP } from "otpauth";
-import QRCode from "qrcode";
+import { renderSVG } from "uqr";
 
 export default defineEventHandler(async (event) => {
   try {
@@ -25,8 +25,10 @@ export default defineEventHandler(async (event) => {
       const secret = totp.secret.base32;
       const otpauthUrl = totp.toString();
 
-      // Generate QR code
-      const qrCodeUrl = await QRCode.toDataURL(otpauthUrl);
+      // uqr renders pure SVG — the old `qrcode` package crashes on Workers
+      // (its pngjs dependency uses util.inherits, unsupported by nodejs_compat)
+      const svg = renderSVG(otpauthUrl, { border: 2 });
+      const qrCodeUrl = `data:image/svg+xml;base64,${btoa(svg)}`;
 
       // Replace any stale pending rows, then create a fresh one
       await db.prepare(`DELETE FROM User WHERE isRegistered = 0`).first();
