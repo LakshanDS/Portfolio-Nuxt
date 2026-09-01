@@ -55,8 +55,6 @@ const deleteTarget = ref<string | null>(null);
 const formData = ref<RoadmapForm>(emptyForm());
 const tagInput = ref("");
 
-const editorRef = ref<HTMLElement | null>(null);
-
 const inputClass =
   "w-full border border-line bg-transparent px-3 py-2 text-sm text-bright placeholder:text-dim/60 focus:border-phosphor focus:outline-none";
 const labelClass = "block font-mono text-[11px] uppercase tracking-[0.14em] text-dim";
@@ -109,18 +107,12 @@ function openAdd() {
   formData.value = emptyForm();
   isAdding.value = true;
   isEditing.value = null;
-  scrollToEditor();
 }
 
 function editItem(item: RoadmapItem) {
   formData.value = { ...emptyForm(), ...item };
   isEditing.value = item.id;
   isAdding.value = false;
-  scrollToEditor();
-}
-
-function scrollToEditor() {
-  nextTick(() => editorRef.value?.scrollIntoView({ behavior: "smooth", block: "start" }));
 }
 
 function closeEditor() {
@@ -219,18 +211,28 @@ function statusTitleClass(status: string) {
     <div v-if="isLoading" class="animate-pulse font-mono text-sm text-dim">loading…</div>
 
     <template v-else>
-      <!-- editor panel -->
-      <section v-if="isAdding || isEditing" ref="editorRef" class="brackets scroll-mt-6 border border-line bg-panel">
-        <div class="flex items-center justify-between border-b border-line p-5">
-          <h2 class="font-mono text-sm uppercase tracking-[0.14em] text-bright">
-            {{ isEditing ? "Edit Roadmap Item" : "Add New Item" }}
-          </h2>
-          <button type="button" class="text-dim transition-colors hover:text-bright" @click="closeEditor">
-            <Icon name="fa:times" size="16" />
-          </button>
-        </div>
+      <!-- roadmap item editor modal -->
+      <div
+        v-if="isAdding || isEditing"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+        @click.self="closeEditor"
+      >
+        <div class="max-h-[90vh] w-full max-w-lg overflow-y-auto border border-line bg-panel">
+          <div class="flex items-center justify-between border-b border-line p-5">
+            <h3 class="font-mono text-sm uppercase tracking-[0.14em] text-bright">
+              {{ isEditing ? "edit roadmap item" : "new roadmap item" }}
+            </h3>
+            <button
+              type="button"
+              class="p-1.5 text-dim transition-colors hover:bg-phosphor/10 hover:text-phosphor"
+              aria-label="Close editor"
+              @click="closeEditor"
+            >
+              <Icon name="fa:times" size="14" />
+            </button>
+          </div>
 
-        <form class="space-y-6 p-5" @submit.prevent="saveItem">
+          <form class="space-y-5 p-5" @submit.prevent="saveItem">
           <div class="grid gap-5 md:grid-cols-2">
             <div class="space-y-2">
               <label :class="labelClass">Title</label>
@@ -295,7 +297,8 @@ function statusTitleClass(status: string) {
             </UiButton>
           </div>
         </form>
-      </section>
+        </div>
+      </div>
 
       <!-- settings + list -->
       <div class="grid gap-5 lg:grid-cols-3">

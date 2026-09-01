@@ -1,10 +1,9 @@
 <script setup lang="ts">
 // Homepage
 // settings: hero content (profile image upload, title, description, CTA
-// buttons) + section toggles. Section titles/subtitles are
-// not editable because the NightOps homepage hardcodes its headers and only
-// reads each section's `enabled` flag.
-// Saves via POST /api/home-settings.
+// buttons) + the featured project card (flagship frame + strip project).
+// Section titles/subtitles are not editable because the NightOps homepage
+// hardcodes its headers. Saves via POST /api/home-settings.
 definePageMeta({ layout: "jasladmin-dashboard" });
 
 interface HomeSettings {
@@ -61,19 +60,30 @@ const uploading = ref(""); // which upload is in flight: "hero" | "featured"
 const showResetConfirm = ref(false);
 const projectOptions = ref<{ id: string; title: string }[]>([]);
 
+// fill the saved settings up to the fixed edit slots (2 beats, 2 stats) —
+// shorter saved arrays get empty cards to edit; the homepage hides empty ones
+function normalizeSettings(data: Partial<HomeSettings>): HomeSettings {
+  const base = emptySettings();
+  const merged: HomeSettings = {
+    ...base,
+    ...data,
+    hero: { ...base.hero, ...data.hero },
+    featured: { ...base.featured, ...data.featured },
+    strip: { ...base.strip, ...data.strip },
+  };
+  const pad = <T>(arr: T[] | undefined, n: number, make: () => T): T[] =>
+    Array.from({ length: n }, (_, i) => arr?.[i] ?? make());
+  merged.featured.beats = pad(merged.featured.beats, 2, () => ({ label: "", text: "" }));
+  merged.strip.stats = pad(merged.strip.stats, 2, () => ({ value: "", label: "" }));
+  return merged;
+}
+
 async function loadSettings() {
   isLoading.value = true;
   loadError.value = false;
   try {
     // the API always returns complete settings (server defaults merged in)
-    const data = await $fetch<HomeSettings>("/api/home-settings");
-    settings.value = {
-      ...emptySettings(),
-      ...data,
-      hero: { ...emptySettings().hero, ...data.hero },
-      featured: { ...emptySettings().featured, ...data.featured },
-      strip: { ...emptySettings().strip, ...data.strip },
-    };
+    settings.value = normalizeSettings(await $fetch<HomeSettings>("/api/home-settings"));
     imagePreview.value = settings.value.hero.imageUrl;
     logoPreview.value = settings.value.featured.logo;
   } catch (error) {
@@ -134,17 +144,6 @@ function updateStat(index: number, field: "value" | "label", value: string) {
     "stats",
     settings.value.strip.stats.map((stat, i) => (i === index ? { ...stat, [field]: value } : stat)),
   );
-}
-
-function toggleSection(key: string) {
-  settings.value = {
-    ...settings.value,
-    sections: {
-      ...settings.value.sections,
-      [key]: { enabled: !settings.value.sections[key]?.enabled },
-    },
-  };
-  hasChanges.value = true;
 }
 
 async function cleanupUpload(path?: string) {
@@ -218,22 +217,14 @@ async function saveSettings() {
 }
 
 async function resetSettings() {
-  settings.value = await $fetch<HomeSettings>("/api/home-settings", { query: { defaults: 1 } });
+  settings.value = normalizeSettings(await $fetch<HomeSettings>("/api/home-settings", { query: { defaults: 1 } }));
   imagePreview.value = settings.value.hero.imageUrl;
   logoPreview.value = settings.value.featured.logo;
   hasChanges.value = true;
   showResetConfirm.value = false;
 }
 
-// homepage sections in render order (see app/pages/index.vue)
-const sectionRows: { key: string; title: string; subtitle: string }[] = [
-  { key: "toolsOfTrade", title: "Tools", subtitle: "tools of trade strip" },
-  { key: "projects", title: "Featured Work", subtitle: "project grid" },
-  { key: "roadmap", title: "Career Log", subtitle: "roadmap timeline" },
-  { key: "competencies", title: "Expertise", subtitle: "core competencies" },
-  { key: "cta", title: "Contact", subtitle: "closing call-to-action" },
-];
-
+// homepage section toggles are no longer editable from the dashboard
 const heroFields: { key: keyof HomeSettings["hero"]; label: string; placeholder?: string; hint?: string }[] = [
   {
     key: "title",
@@ -251,12 +242,6 @@ const heroFields: { key: keyof HomeSettings["hero"]; label: string; placeholder?
 const buttonFields: { key: "primaryButtonText" | "secondaryButtonText"; linkKey: "primaryButtonLink" | "secondaryButtonLink"; label: string }[] = [
   { key: "primaryButtonText", linkKey: "primaryButtonLink", label: "primary button" },
   { key: "secondaryButtonText", linkKey: "secondaryButtonLink", label: "secondary button" },
-];
-
-const featuredFields: { key: "kicker" | "statusLine" | "sub"; label: string; placeholder?: string }[] = [
-  { key: "kicker", label: "kicker", placeholder: "agentmello" },
-  { key: "statusLine", label: "status line", placeholder: "in production · 24/7" },
-  { key: "sub", label: "tagline", placeholder: "falls back to the project description" },
 ];
 
 const inputCls =
@@ -383,190 +368,171 @@ const labelCls = "font-mono text-[11px] uppercase tracking-[0.14em] text-dim";
           </div>
         </UiCard>
 
-        <!-- SECTION SETTINGS -->
+        <!-- FEATURED PROJECT — flagship on top, strip below -->
         <UiCard>
           <div class="border-b border-line p-5">
-            <h2 class="font-mono text-sm uppercase tracking-[0.14em] text-dim">section settings</h2>
-            <p class="mt-0.5 text-xs text-dim">toggle sections on/off</p>
+            <h2 class="font-mono text-sm uppercase tracking-[0.14em] text-dim">featured project</h2>
+            <p class="mt-0.5 text-xs text-dim">
+              flagship frame + strip under it — set a slot to none to hide it
+            </p>
           </div>
 
-          <div>
-            <div
-              v-for="row in sectionRows"
-              :key="row.key"
-              class="flex items-center gap-3 border-t border-line px-5 py-3 hover:bg-panel/70"
-            >
-              <button
-                class="flex h-8 w-8 shrink-0 items-center justify-center transition-colors"
-                :class="
-                  settings.sections[row.key]?.enabled
-                    ? 'bg-phosphor/20 text-phosphor hover:bg-phosphor/30'
-                    : 'bg-dim/20 text-dim hover:bg-dim/30'
-                "
-                :aria-label="`Toggle ${row.title}`"
-                @click="toggleSection(row.key)"
-              >
-                <Icon
-                  :name="settings.sections[row.key]?.enabled ? 'fa:toggle-on' : 'fa:toggle-off'"
-                  size="16"
-                />
-              </button>
-              <div class="min-w-0 flex-1">
-                <p
-                  class="text-sm"
-                  :class="settings.sections[row.key]?.enabled ? 'text-bright' : 'text-dim'"
+          <div class="space-y-5 p-5">
+            <!-- flagship -->
+            <div class="space-y-4">
+              <div>
+                <label :class="labelCls" class="mb-1 block">flagship project</label>
+                <select
+                  :value="settings.featured.projectId"
+                  :class="inputCls"
+                  @change="updateFeatured('projectId', ($event.target as HTMLSelectElement).value)"
                 >
-                  {{ row.title }}
-                </p>
-                <p class="font-mono text-[12px] text-dim">{{ row.subtitle }}</p>
+                  <option value="">(none — hide section)</option>
+                  <option v-for="p in projectOptions" :key="p.id" :value="p.id">{{ p.title }}</option>
+                </select>
               </div>
+
+              <template v-if="settings.featured.projectId">
+                <div class="flex items-stretch gap-4">
+                  <div class="flex shrink-0 flex-col gap-1">
+                    <label :class="labelCls" class="block">logo</label>
+                    <label
+                      class="group relative h-28 w-28 cursor-pointer overflow-hidden border border-line bg-abyss"
+                    >
+                      <img
+                        v-if="logoPreview"
+                        :src="logoPreview"
+                        alt="Featured logo preview"
+                        class="h-full w-full object-cover"
+                      />
+                      <div v-else class="flex h-full w-full items-center justify-center text-dim">
+                        <Icon name="fa:image" size="22" />
+                      </div>
+                      <span
+                        class="absolute inset-0 flex flex-col items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100"
+                      >
+                        <Icon name="fa:upload" size="14" class="text-bright" />
+                        <span class="mt-1 font-mono text-[10px] uppercase text-bright">
+                          {{ uploading === "featured" ? "uploading…" : "change" }}
+                        </span>
+                      </span>
+                      <input type="file" accept="image/*" class="hidden" @change="handleLogoUpload" />
+                    </label>
+                  </div>
+
+                  <div class="min-w-0 flex-1 space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                      <div>
+                        <label :class="labelCls" class="mb-1 block">kicker</label>
+                        <input
+                          type="text"
+                          :value="settings.featured.kicker"
+                          :class="inputCls"
+                          placeholder="agentmello"
+                          @input="updateFeatured('kicker', ($event.target as HTMLInputElement).value)"
+                        />
+                      </div>
+                      <div>
+                        <label :class="labelCls" class="mb-1 block">status line</label>
+                        <input
+                          type="text"
+                          :value="settings.featured.statusLine"
+                          :class="inputCls"
+                          placeholder="in production · 24/7"
+                          @input="updateFeatured('statusLine', ($event.target as HTMLInputElement).value)"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label :class="labelCls" class="mb-1 block">tagline</label>
+                      <input
+                        type="text"
+                        :value="settings.featured.sub"
+                        :class="inputCls"
+                        placeholder="falls back to the project description"
+                        @input="updateFeatured('sub', ($event.target as HTMLInputElement).value)"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="border-t border-line pt-4">
+                  <label :class="labelCls" class="mb-2 block">beats</label>
+                  <div class="grid grid-cols-2 gap-3">
+                    <div v-for="(beat, i) in settings.featured.beats" :key="i" class="space-y-2">
+                      <input
+                        type="text"
+                        :value="beat.label"
+                        :class="inputCls"
+                        placeholder="label"
+                        @input="updateBeat(i, 'label', ($event.target as HTMLInputElement).value)"
+                      />
+                      <textarea
+                        :value="beat.text"
+                        :class="inputCls"
+                        class="min-h-[90px] resize-none"
+                        placeholder="text — empty beats are hidden"
+                        @input="updateBeat(i, 'text', ($event.target as HTMLTextAreaElement).value)"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <!-- strip -->
+            <div class="space-y-4 border-t border-line pt-5">
+              <div>
+                <label :class="labelCls" class="mb-1 block">strip project</label>
+                <select
+                  :value="settings.strip.projectId"
+                  :class="inputCls"
+                  @change="updateStrip('projectId', ($event.target as HTMLSelectElement).value)"
+                >
+                  <option value="">(none — hide strip)</option>
+                  <option v-for="p in projectOptions" :key="p.id" :value="p.id">{{ p.title }}</option>
+                </select>
+              </div>
+
+              <template v-if="settings.strip.projectId">
+                <div>
+                  <label :class="labelCls" class="mb-1 block">strip kicker</label>
+                  <input
+                    type="text"
+                    :value="settings.strip.kicker"
+                    :class="inputCls"
+                    placeholder="falls back to the project category"
+                    @input="updateStrip('kicker', ($event.target as HTMLInputElement).value)"
+                  />
+                </div>
+
+                <div class="border-t border-line pt-4">
+                  <label :class="labelCls" class="mb-2 block">strip stats</label>
+                  <div class="grid grid-cols-4 gap-2">
+                    <template v-for="(stat, i) in settings.strip.stats" :key="i">
+                      <input
+                        type="text"
+                        :value="stat.value"
+                        :class="inputCls"
+                        placeholder="value (253+)"
+                        @input="updateStat(i, 'value', ($event.target as HTMLInputElement).value)"
+                      />
+                      <input
+                        type="text"
+                        :value="stat.label"
+                        :class="inputCls"
+                        placeholder="label (real trades)"
+                        @input="updateStat(i, 'label', ($event.target as HTMLInputElement).value)"
+                      />
+                    </template>
+                  </div>
+                </div>
+              </template>
             </div>
           </div>
         </UiCard>
       </div>
-
-      <!-- FEATURED PROJECT -->
-      <UiCard class="mt-5">
-        <div class="border-b border-line p-5">
-          <h2 class="font-mono text-sm uppercase tracking-[0.14em] text-dim">featured project</h2>
-          <p class="mt-0.5 text-xs text-dim">
-            flagship frame + strip under it — set a slot to none to hide it
-          </p>
-        </div>
-
-        <div class="grid grid-cols-1 gap-8 p-5 lg:grid-cols-2">
-          <!-- flagship -->
-          <div class="space-y-4">
-            <div>
-              <label :class="labelCls" class="mb-1 block">flagship project</label>
-              <select
-                :value="settings.featured.projectId"
-                :class="inputCls"
-                @change="updateFeatured('projectId', ($event.target as HTMLSelectElement).value)"
-              >
-                <option value="">(none — hide section)</option>
-                <option v-for="p in projectOptions" :key="p.id" :value="p.id">{{ p.title }}</option>
-              </select>
-            </div>
-
-            <template v-if="settings.featured.projectId">
-              <div class="flex items-center gap-4 border border-line p-4">
-                <label
-                  class="group relative h-20 w-20 cursor-pointer overflow-hidden border border-line bg-abyss"
-                >
-                  <img
-                    v-if="logoPreview"
-                    :src="logoPreview"
-                    alt="Featured logo preview"
-                    class="h-full w-full object-contain p-1"
-                  />
-                  <div v-else class="flex h-full w-full items-center justify-center text-dim">
-                    <Icon name="fa:image" size="22" />
-                  </div>
-                  <span
-                    class="absolute inset-0 flex flex-col items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100"
-                  >
-                    <Icon name="fa:upload" size="14" class="text-bright" />
-                    <span class="mt-1 font-mono text-[10px] uppercase text-bright">
-                      {{ uploading === "featured" ? "uploading…" : "change" }}
-                    </span>
-                  </span>
-                  <input type="file" accept="image/*" class="hidden" @change="handleLogoUpload" />
-                </label>
-                <div>
-                  <h3 class="text-sm text-bright">flagship logo</h3>
-                  <p class="mt-0.5 text-xs text-dim">
-                    wide logo for the frame — falls back to the project image
-                  </p>
-                </div>
-              </div>
-
-              <div v-for="field in featuredFields" :key="field.key">
-                <label :class="labelCls" class="mb-1 block">{{ field.label }}</label>
-                <input
-                  type="text"
-                  :value="settings.featured[field.key]"
-                  :class="inputCls"
-                  :placeholder="field.placeholder"
-                  @input="updateFeatured(field.key, ($event.target as HTMLInputElement).value)"
-                />
-              </div>
-
-              <div class="border-t border-line pt-4">
-                <label :class="labelCls" class="mb-2 block">beats</label>
-                <div class="grid grid-cols-3 gap-3 max-md:grid-cols-1">
-                  <div v-for="(beat, i) in settings.featured.beats" :key="i" class="space-y-2">
-                    <input
-                      type="text"
-                      :value="beat.label"
-                      :class="inputCls"
-                      placeholder="label"
-                      @input="updateBeat(i, 'label', ($event.target as HTMLInputElement).value)"
-                    />
-                    <textarea
-                      :value="beat.text"
-                      :class="inputCls"
-                      class="min-h-[90px] resize-none"
-                      placeholder="text — empty beats are hidden"
-                      @input="updateBeat(i, 'text', ($event.target as HTMLTextAreaElement).value)"
-                    />
-                  </div>
-                </div>
-              </div>
-            </template>
-          </div>
-
-          <!-- strip -->
-          <div class="space-y-4">
-            <div>
-              <label :class="labelCls" class="mb-1 block">strip project</label>
-              <select
-                :value="settings.strip.projectId"
-                :class="inputCls"
-                @change="updateStrip('projectId', ($event.target as HTMLSelectElement).value)"
-              >
-                <option value="">(none — hide strip)</option>
-                <option v-for="p in projectOptions" :key="p.id" :value="p.id">{{ p.title }}</option>
-              </select>
-            </div>
-
-            <template v-if="settings.strip.projectId">
-              <div>
-                <label :class="labelCls" class="mb-1 block">strip kicker</label>
-                <input
-                  type="text"
-                  :value="settings.strip.kicker"
-                  :class="inputCls"
-                  placeholder="falls back to the project category"
-                  @input="updateStrip('kicker', ($event.target as HTMLInputElement).value)"
-                />
-              </div>
-
-              <div class="border-t border-line pt-4">
-                <label :class="labelCls" class="mb-2 block">strip stats</label>
-                <div class="grid grid-cols-2 gap-3">
-                  <div v-for="(stat, i) in settings.strip.stats" :key="i" class="space-y-2">
-                    <input
-                      type="text"
-                      :value="stat.value"
-                      :class="inputCls"
-                      placeholder="value (253+)"
-                      @input="updateStat(i, 'value', ($event.target as HTMLInputElement).value)"
-                    />
-                    <input
-                      type="text"
-                      :value="stat.label"
-                      :class="inputCls"
-                      placeholder="label (real trades)"
-                      @input="updateStat(i, 'label', ($event.target as HTMLInputElement).value)"
-                    />
-                  </div>
-                </div>
-              </div>
-            </template>
-          </div>
-        </div>
-      </UiCard>
     </template>
 
     <!-- reset confirm -->

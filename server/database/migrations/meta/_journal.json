@@ -15,6 +15,13 @@
       "when": 1788216886556,
       "tag": "0001_seed_defaults",
       "breakpoints": false
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788267277130,
+      "tag": "0002_calm_green_goblin",
+      "breakpoints": true
     }
   ]
 }

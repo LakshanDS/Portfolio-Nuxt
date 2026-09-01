@@ -47,6 +47,9 @@ const props = withDefaults(
           <NuxtLink :to="`/projects/${project.id}`" :aria-label="project.title" class="absolute inset-0 z-0" />
 
           <div class="flex items-center justify-between px-1 pb-3 pt-0.5">
+            <span class="font-mono text-[11px] text-dim">
+              {{ props.numbers?.[project.id] ?? String(index + 1).padStart(2, "0") }}
+            </span>
             <span
               class="flex items-center gap-[7px] font-mono text-[11px]"
               :class="statusFor(project.status).dimmed ? 'text-dim' : statusFor(project.status).wip ? 'text-amber' : 'text-phosphor'"
@@ -56,9 +59,6 @@ const props = withDefaults(
                 :class="statusFor(project.status).dimmed ? 'bg-dim' : statusFor(project.status).wip ? 'animate-pulse bg-amber' : 'bg-phosphor'"
               />
               {{ statusFor(project.status).label }}
-            </span>
-            <span class="font-mono text-[11px] text-dim">
-              {{ props.numbers?.[project.id] ?? String(index + 1).padStart(2, "0") }}
             </span>
           </div>
 

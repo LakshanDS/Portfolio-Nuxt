@@ -193,28 +193,28 @@ const dotTone = (st: { wip: boolean; dimmed: boolean }) =>
           v-for="project in featured"
           :key="project.id"
           data-reveal
-          class="group flex min-w-0 flex-col gap-3 border border-line bg-panel/55 p-5 pb-4 transition-[border-color,transform] duration-200 hover:-translate-y-[3px] hover:border-phosphor/55"
+          class="group flex min-w-0 flex-col gap-3 border border-line bg-panel/55 p-5 transition-[border-color,transform] duration-200 hover:-translate-y-[3px] hover:border-phosphor/55"
         >
-          <div class="flex items-center justify-between">
-            <span
-              class="flex items-center gap-[7px] font-mono text-[11px] uppercase tracking-[0.12em]"
-              :class="statusTone(statusFor(project.status))"
-            >
-              <i class="h-1.5 w-1.5 rounded-full" :class="dotTone(statusFor(project.status))" />
-              {{ statusFor(project.status).label }}
-            </span>
-            <span class="font-mono text-[11px] uppercase tracking-[0.12em] text-amber">featured</span>
-            <span class="font-mono text-[11px] text-dim">{{ String(registryIndex(project)).padStart(2, "0") }}</span>
-          </div>
-
           <div class="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_420px] gap-[22px] max-lg:grid-cols-1">
             <div class="flex min-w-0 flex-col gap-3">
-              <h3 class="text-[1.3rem] font-medium text-bright">{{ project.title }}</h3>
+              <div class="flex items-center justify-between gap-4">
+                <h3 class="flex min-w-0 items-baseline gap-2.5 text-[1.3rem] font-medium text-bright">
+                  <span class="font-mono text-dim">{{ String(registryIndex(project)).padStart(2, "0") }}</span>
+                  <span class="truncate">{{ project.title }}</span>
+                </h3>
+                <span
+                  class="flex shrink-0 items-center gap-[7px] font-mono text-[11px] uppercase tracking-[0.12em]"
+                  :class="statusTone(statusFor(project.status))"
+                >
+                  <i class="h-1.5 w-1.5 rounded-full" :class="dotTone(statusFor(project.status))" />
+                  {{ statusFor(project.status).label }}
+                </span>
+              </div>
               <p class="max-w-[70ch] font-mono text-[0.84rem] leading-[1.6] text-dim">{{ project.description }}</p>
 
               <div v-if="hasDocs(project)" class="border border-line bg-[#0D0D0F]">
                 <div class="flex justify-between border-b border-line px-3.5 py-[7px] font-mono text-[10.5px] uppercase tracking-[0.14em] text-dim">
-                  <span>{{ project.id }}/readme.md</span>
+                  <span>{{ project.title }}/readme.md</span>
                   <span>markdown · rendered</span>
                 </div>
                 <p class="relative px-4 pb-3 pt-3 font-mono text-[12px] leading-[1.65] text-text-secondary after:absolute after:inset-x-0 after:bottom-0 after:h-[22px] after:bg-gradient-to-b after:from-transparent after:to-[#0D0D0F]">

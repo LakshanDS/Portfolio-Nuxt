@@ -5,7 +5,7 @@ export default defineEventHandler(async (event) => {
   const db = useDb(event);
   const row = await db
     .prepare(
-      `SELECT id, title, description, category, tags, status, imageUrl, demoUrl, repoUrl, content, displayOrder, createdAt, updatedAt
+      `SELECT id, title, description, category, tags, status, year, imageUrl, demoUrl, repoUrl, content, displayOrder, createdAt, updatedAt
        FROM Project WHERE id = ?`,
     )
     .bind(id)

@@ -77,8 +77,8 @@ const sorted = computed(() =>
   }),
 );
 
-// first three log entries start unfolded; clicking a row folds/unfolds
-const open = ref(new Set(sorted.value.slice(0, 3).map((i) => i.id)));
+// first nine log entries start with descriptions unfolded; clicking a row folds/unfolds
+const open = ref(new Set(sorted.value.slice(0, 9).map((i) => i.id)));
 const yearsWithItems = computed(() =>
   [...new Set(sorted.value.map((i) => yearOf(i.date)))].sort((a, b) => Number(b) - Number(a)),
 );
@@ -88,7 +88,19 @@ const years = computed(() =>
 );
 const firstYear = computed(() => yearsWithItems.value[yearsWithItems.value.length - 1] ?? currentYear);
 
-const categories = computed(() => Array.from(new Set(props.items.map((i) => i.category))));
+// one filter row: top-used categories inline, the rest behind a "+N" toggle
+const MAX_INLINE_CATS = 4;
+const categoriesByUse = computed(() => {
+  const counts = new Map<string, number>();
+  for (const item of props.items) counts.set(item.category, (counts.get(item.category) ?? 0) + 1);
+  // stable sort — equal counts keep first-seen (chronological) order
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([cat]) => cat);
+});
+const showAllCats = ref(false);
+const categories = computed(() =>
+  showAllCats.value ? categoriesByUse.value : categoriesByUse.value.slice(0, MAX_INLINE_CATS),
+);
+const hiddenCatCount = computed(() => Math.max(0, categoriesByUse.value.length - MAX_INLINE_CATS));
 const tally = computed(() => ({
   shipped: props.items.filter((i) => i.status === "completed").length,
   building: props.items.filter((i) => i.status === "in-progress").length,
@@ -118,7 +130,6 @@ function resetFilters() {
   cats.value = new Set();
   sts.value = new Set();
 }
-const anyFilter = computed(() => cats.value.size > 0 || sts.value.size > 0);
 </script>
 
 <template>
@@ -142,41 +153,46 @@ const anyFilter = computed(() => cats.value.size > 0 || sts.value.size > 0);
           </div>
         </div>
 
-        <nav aria-label="changelog filters" data-reveal class="relative flex flex-wrap items-center gap-2 pb-[30px] pt-[26px]">
-          <span class="mr-1 font-mono text-[12px] text-dim">
-            filter <b class="font-medium text-phosphor">--category</b>
-          </span>
-          <button
-            v-for="cat in categories"
-            :key="cat"
-            type="button"
-            :aria-pressed="cats.has(cat)"
-            :class="flagCls(cats.has(cat))"
-            @click="cats = toggleFlag(cats, cat)"
-          >
-            --{{ cat }}
-          </button>
-          <span class="ml-3 mr-1 font-mono text-[12px] text-dim">
-            <b class="font-medium text-phosphor">--status</b>
-          </span>
-          <template v-for="{ st, label } in STATUS_FLAGS" :key="st">
+        <nav aria-label="changelog filters" data-reveal class="relative flex flex-wrap items-start gap-x-4 gap-y-2 pb-[30px] pt-[26px]">
+          <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <span class="mr-1 font-mono text-[12px] text-dim">
+              filter <b class="font-medium text-phosphor">--category</b>
+            </span>
             <button
+              v-for="cat in categories"
+              :key="cat"
               type="button"
-              :aria-pressed="sts.has(st)"
-              :class="flagCls(sts.has(st), label === 'building' ? 'warn' : label === 'queued' ? 'dim' : undefined)"
-              @click="sts = toggleFlag(sts, st)"
+              :aria-pressed="cats.has(cat)"
+              :class="flagCls(cats.has(cat))"
+              @click="cats = toggleFlag(cats, cat)"
             >
-              --{{ label }}
+              --{{ cat }}
             </button>
-          </template>
-          <button
-            type="button"
-            class="ml-auto font-mono text-[11px] text-dim transition-opacity hover:text-bright"
-            :class="anyFilter ? 'opacity-100' : 'pointer-events-none opacity-0'"
-            @click="resetFilters"
-          >
-            reset ×
-          </button>
+            <button
+              v-if="hiddenCatCount > 0"
+              type="button"
+              :aria-expanded="showAllCats"
+              :class="flagCls(showAllCats, 'dim')"
+              @click="showAllCats = !showAllCats"
+            >
+              {{ showAllCats ? "− less" : `+${hiddenCatCount}` }}
+            </button>
+          </div>
+          <div class="flex shrink-0 items-center gap-2">
+            <span class="mr-1 font-mono text-[12px] text-dim">
+              <b class="font-medium text-phosphor">--status</b>
+            </span>
+            <template v-for="{ st, label } in STATUS_FLAGS" :key="st">
+              <button
+                type="button"
+                :aria-pressed="sts.has(st)"
+                :class="flagCls(sts.has(st), label === 'building' ? 'warn' : label === 'queued' ? 'dim' : undefined)"
+                @click="sts = toggleFlag(sts, st)"
+              >
+                --{{ label }}
+              </button>
+            </template>
+          </div>
         </nav>
       </div>
     </header>

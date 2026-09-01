@@ -480,7 +480,7 @@ select option {
 /* career year block — slow collapse for scroll-away extras */
 .career-collapse {
   display: grid;
-  transition: grid-template-rows 0.5s ease;
+  transition: grid-template-rows 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .career-collapse > div {
   overflow: hidden;

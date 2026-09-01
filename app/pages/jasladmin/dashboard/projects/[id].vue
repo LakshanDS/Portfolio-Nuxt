@@ -13,6 +13,7 @@ interface ProjectForm {
   category: string;
   tags: string[];
   status: string;
+  year: string;
   imageUrl: string;
   demoUrl: string;
   repoUrl: string;
@@ -30,6 +31,7 @@ const emptyForm = (): ProjectForm => ({
   category: "Cloud",
   tags: [],
   status: "live",
+  year: "",
   imageUrl: "",
   demoUrl: "",
   repoUrl: "",
@@ -66,6 +68,7 @@ onMounted(async () => {
       category: project.category || "Cloud",
       tags: project.tags || [],
       status: project.status || "live",
+      year: project.year || "",
       imageUrl: project.imageUrl || "",
       demoUrl: project.demoUrl || "",
       repoUrl: project.repoUrl || "",
@@ -212,8 +215,8 @@ async function handleImageUpload(e: Event) {
               </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
-              <div class="space-y-2">
+            <div class="grid grid-cols-4 gap-4">
+              <div class="col-span-2 space-y-2">
                 <label :class="labelClass">Category</label>
                 <div class="relative">
                   <select v-model="formData.category" :class="inputClass" class="appearance-none pr-8">
@@ -223,6 +226,10 @@ async function handleImageUpload(e: Event) {
                   </select>
                   <Icon name="fa:chevron-down" size="12" class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-dim" />
                 </div>
+              </div>
+              <div class="space-y-2">
+                <label :class="labelClass">Year</label>
+                <input v-model="formData.year" type="text" :class="inputClass" placeholder="2026 Q1" />
               </div>
               <div class="space-y-2">
                 <label :class="labelClass">Display Order</label>

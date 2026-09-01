@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
 
     const sets: string[] = [];
     const values: unknown[] = [];
-    for (const field of ["title", "description", "category", "status", "imageUrl", "demoUrl", "repoUrl", "content", "displayOrder"]) {
+    for (const field of ["title", "description", "category", "status", "year", "imageUrl", "demoUrl", "repoUrl", "content", "displayOrder"]) {
       if (body[field] !== undefined) {
         sets.push(`${field} = ?`);
         values.push(body[field]);
