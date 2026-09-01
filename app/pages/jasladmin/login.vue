@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Login page — same flow, markup and shapes.
+// Login page — terminal-styled TOTP gate.
 // The QR data URL is generated server-side by GET /api/login;
 // the csrf token travels in the POST body, not in headers.
 
@@ -20,6 +20,7 @@ const tempId = ref<string | null>(null);
 const csrfToken = ref<string | null>(null);
 const remainingAttempts = ref<number | null>(null);
 const rateLimitResetTime = ref<number | null>(null);
+const copied = ref(false);
 
 // Check if user is registered on mount
 onMounted(() => {
@@ -28,6 +29,7 @@ onMounted(() => {
 
 async function checkRegistrationStatus() {
   try {
+    error.value = null;
     const data = await $fetch<{
       isRegistered: boolean;
       qrCodeUrl?: string;
@@ -43,7 +45,7 @@ async function checkRegistrationStatus() {
     }
     csrfToken.value = data.csrfToken ?? null;
   } catch {
-    error.value = "Failed to load. Please refresh the page.";
+    error.value = "auth service unreachable";
   }
 }
 
@@ -76,7 +78,7 @@ async function handleOtpSubmit() {
     if (data && typeof data === "object") {
       applyLoginError(data);
     } else {
-      error.value = "Login failed. Please try again.";
+      error.value = "login failed — try again";
     }
   } finally {
     isLoading.value = false;
@@ -84,7 +86,7 @@ async function handleOtpSubmit() {
 }
 
 function applyLoginError(data: LoginResponse) {
-  error.value = data.error || "Invalid OTP code";
+  error.value = data.error || "invalid code";
   otpCode.value = "";
   if (data.remainingAttempts !== undefined) {
     remainingAttempts.value = data.remainingAttempts;
@@ -106,246 +108,187 @@ function formatTime(seconds: number) {
   const secs = seconds % 60;
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
+
+async function copySecret() {
+  if (!secret.value) return;
+  await navigator.clipboard.writeText(secret.value);
+  copied.value = true;
+  setTimeout(() => (copied.value = false), 1500);
+}
 </script>
 
 <template>
-  <div class="min-h-screen relative overflow-hidden bg-gradient-to-br from-[#0a0a0b] via-[#141416] to-[#0a0a0b] flex items-center justify-center p-6">
-    <!-- Animated gradient orbs -->
-    <div class="absolute inset-0 overflow-hidden pointer-events-none">
-      <div class="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-emerald-500/20 to-green-600/10 rounded-full blur-3xl animate-pulse"></div>
-      <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-tr from-cyan-500/10 to-emerald-600/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
-      <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-br from-amber-500/5 to-pink-600/5 rounded-full blur-3xl animate-pulse delay-500"></div>
-    </div>
+  <div class="relative flex min-h-[calc(100dvh-76px)] items-center justify-center overflow-hidden bg-abyss px-6 py-8">
+    <!-- CRT depth, same device as the rest of the site -->
+    <div class="scanlines opacity-40" aria-hidden="true" />
 
-    <div class="w-full relative z-10 transition-all duration-500 ease-in-out" :class="isRegistered === false ? 'max-w-4xl' : 'max-w-md'">
-      <!-- Header with gradient text -->
-      <div class="text-center mb-8">
-        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-green-600/20 backdrop-blur-sm border border-emerald-500/20 mb-4">
-          <svg class="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
+    <div
+      class="relative z-10 w-full transition-all duration-300"
+      :class="isRegistered === false ? 'max-w-[880px]' : 'max-w-[440px]'"
+    >
+      <div class="border border-line bg-panel/70">
+        <!-- terminal titlebar -->
+        <div class="flex items-center justify-between border-b border-line px-[18px] py-3 font-mono text-[11.5px] uppercase tracking-[0.16em] text-dim">
+          <span>admin@portfolio:~$ {{ isRegistered === false ? "auth --pair" : "auth --unlock" }}</span>
         </div>
-        <h1 class="text-2xl font-bold bg-gradient-to-r from-emerald-400 via-green-300 to-cyan-400 bg-clip-text text-transparent mb-2">
-          Admin Access
-        </h1>
-        <p class="text-[#d4d4ce] text-sm font-mono">
-          <span class="text-emerald-400">&gt;_</span>
-          {{ isRegistered === false ? "First time setup - scan QR code" : "Enter your authentication code" }}
-        </p>
-      </div>
 
-      <div class="relative backdrop-blur-xl bg-black/80 rounded-2xl border border-emerald-500/20 shadow-2xl shadow-emerald-900/10 overflow-hidden">
-        <!-- Gradient border effect - Darker Green -->
-        <div class="absolute inset-0 bg-gradient-to-br from-emerald-900/20 via-transparent to-cyan-900/20 pointer-events-none"></div>
-
-        <div class="relative p-8">
-          <div v-if="isRegistered === null" class="text-center py-12">
-            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500/20 to-green-600/20 mb-4">
-              <div class="animate-spin rounded-full h-8 w-8 border-2 border-emerald-400 border-t-transparent"></div>
-            </div>
-            <p class="text-sm text-[#d4d4ce]">Initializing...</p>
+        <div class="p-6 max-md:p-5">
+          <!-- resolving / unreachable -->
+          <div v-if="isRegistered === null" class="py-10 text-center font-mono">
+            <template v-if="!error">
+              <p class="text-[13.5px] text-text-secondary">
+                <span class="text-phosphor">$</span> initializing secure channel<span class="cursor-block ml-1 text-phosphor" aria-hidden="true">▮</span>
+              </p>
+            </template>
+            <template v-else>
+              <p class="text-[13.5px] text-amber">! {{ error }}</p>
+              <button class="mt-6 border border-phosphor px-[22px] py-3 font-mono text-[13.5px] text-phosphor transition-colors hover:bg-phosphor/10" @click="checkRegistrationStatus">
+                $ retry --connect
+              </button>
+            </template>
           </div>
 
-          <div v-else-if="!isRegistered" class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center p-2">
-            <!-- Left Column: QR Code & Secret -->
-            <div class="flex flex-col items-center justify-center p-6 bg-emerald-950/10 rounded-xl border border-emerald-500/10 space-y-6 h-full">
-              <div class="text-center w-full">
-                <span class="text-xs font-medium text-emerald-400 uppercase tracking-widest mb-4 block">Scan Me</span>
-                <div v-if="qrCodeUrl" class="inline-block p-4 bg-white rounded-xl shadow-lg shadow-emerald-500/10 select-none">
-                  <img :src="qrCodeUrl" alt="QR Code" class="w-48 h-48 md:w-56 md:h-56 object-contain" />
-                </div>
+          <!-- first run: pair authenticator -->
+          <div v-else-if="!isRegistered" class="grid grid-cols-1 gap-7 md:grid-cols-[.9fr_1.1fr] max-md:gap-7">
+            <!-- scan target -->
+            <div class="brackets flex flex-col border border-line">
+              <div class="border-b border-line px-[18px] py-3 font-mono text-[11.5px] uppercase tracking-[0.16em] text-dim">
+                // scan target
               </div>
-
-              <div class="text-center w-full space-y-2">
-                <p class="text-[10px] text-emerald-400/60 uppercase tracking-wider">Or enter secret manually</p>
-                <code class="block w-full text-center p-3 bg-black/60 rounded-lg border border-emerald-500/20 text-emerald-400 font-mono text-sm tracking-widest break-all select-all shadow-inner">
-                  {{ secret || "Generating..." }}
-                </code>
+              <div class="flex flex-1 flex-col items-center justify-center gap-4 p-5">
+                <div v-if="qrCodeUrl" class="brackets bg-bright p-4">
+                  <img :src="qrCodeUrl" alt="TOTP pairing QR code" class="block size-40 object-contain md:size-44" />
+                </div>
+                <div class="w-full space-y-2 text-center">
+                  <p class="font-mono text-[10.5px] uppercase tracking-[0.18em] text-dim">// manual entry key</p>
+                  <code class="block w-full overflow-x-auto border border-line bg-abyss px-3 py-2.5 text-center font-mono text-[11px] tracking-[0.06em] text-phosphor whitespace-nowrap">
+                    {{ secret || "…" }}
+                  </code>
+                  <button
+                    type="button"
+                    class="border border-line px-3 py-1.5 font-mono text-[11.5px] text-text-secondary transition-colors hover:border-dim"
+                    @click="copySecret"
+                  >
+                    {{ copied ? "$ copied ✓" : "$ copy" }}
+                  </button>
+                </div>
               </div>
             </div>
 
-            <!-- Right Column: Instructions & Form -->
-            <div class="space-y-6 h-full flex flex-col justify-center">
-              <div class="space-y-4">
-                <h3 class="text-lg font-semibold text-white flex items-center gap-2">
-                  <div class="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold">i</div>
-                  Instructions
-                </h3>
-                <div class="space-y-3 pl-2">
-                  <div class="flex items-start gap-3 text-sm text-[#d4d4ce]">
-                    <span class="text-emerald-400 font-bold mt-0.5">1.</span>
-                    <p>Open <span class="text-emerald-400 font-medium">Google Authenticator</span></p>
-                  </div>
-                  <div class="flex items-start gap-3 text-sm text-[#d4d4ce]">
-                    <span class="text-emerald-400 font-bold mt-0.5">2.</span>
-                    <p>Scan the <span class="text-emerald-400 font-medium">QR code</span> or enter the <span class="text-emerald-400 font-medium">Secret Key</span></p>
-                  </div>
-                  <div class="flex items-start gap-3 text-sm text-[#d4d4ce]">
-                    <span class="text-emerald-400 font-bold mt-0.5">3.</span>
-                    <p>Enter the generated <span class="text-emerald-400 font-medium">6-digit code</span> below</p>
-                  </div>
-                </div>
-              </div>
+            <!-- steps + form -->
+            <div class="flex flex-col justify-center">
+              <p class="font-mono text-[12px] uppercase tracking-[0.22em] text-amber">// first run</p>
+              <h1 class="mt-3 font-mono text-2xl font-bold text-bright">Pair your authenticator</h1>
+              <ol class="mt-4 space-y-2.5 font-mono text-[13.5px] text-text-secondary">
+                <li class="flex gap-3">
+                  <span class="text-dim">01</span> open your authenticator app
+                </li>
+                <li class="flex gap-3">
+                  <span class="text-dim">02</span> scan the code — or enter the key
+                </li>
+                <li class="flex gap-3">
+                  <span class="text-dim">03</span> confirm with the 6-digit code below
+                </li>
+              </ol>
 
-              <form class="space-y-6 pt-4 border-t border-white/5" @submit.prevent="handleOtpSubmit">
-                <div v-if="error" class="bg-red-500/10 border border-red-500/30 rounded-lg p-3 backdrop-blur-sm">
-                  <p class="text-sm text-red-400 text-center">{{ error }}</p>
-                  <p v-if="remainingAttempts !== null" class="text-xs text-red-300 text-center mt-1">
-                    {{ remainingAttempts }} attempts remaining
-                  </p>
-                  <p v-if="rateLimitResetTime !== null" class="text-xs text-red-300 text-center mt-1">
-                    Try again in {{ formatTime(rateLimitResetTime) }}
-                  </p>
+              <form class="mt-5 space-y-4 border-t border-line pt-5" @submit.prevent="handleOtpSubmit">
+                <div v-if="error" class="border border-error/40 bg-error/10 px-4 py-3 font-mono text-[13px]">
+                  <p class="text-error">! {{ error }}</p>
+                  <p v-if="remainingAttempts !== null" class="mt-1 text-[12px] text-dim">attempts remaining: {{ remainingAttempts }}</p>
+                  <p v-if="rateLimitResetTime !== null" class="mt-1 text-[12px] text-dim">retry window: {{ formatTime(rateLimitResetTime) }}</p>
                 </div>
 
-                <div class="space-y-3">
-                  <label class="text-xs font-semibold text-emerald-400/90 block uppercase tracking-wider">
-                    Verification Code
-                  </label>
-                  <input
-                    type="text"
-                    :value="otpCode"
-                    @input="onOtpInput"
-                    class="block w-full px-4 py-3 bg-gradient-to-br from-[#141416] to-[#141416] border-2 border-emerald-500/20 rounded-xl text-[#f5f5f0] text-center text-3xl tracking-[0.5em] focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 transition-all font-mono placeholder:text-gray-700"
-                    placeholder="• • • • • •"
-                    inputmode="numeric"
-                    pattern="[0-9]*"
-                    maxlength="6"
-                    required
-                    autofocus
-                  />
-                </div>
+                <label class="block font-mono text-[11.5px] uppercase tracking-[0.18em] text-dim" for="otp">
+                  verification code
+                </label>
+                <input
+                  id="otp"
+                  type="text"
+                  :value="otpCode"
+                  @input="onOtpInput"
+                  class="block w-full border border-line bg-abyss px-4 py-3 text-center font-mono text-3xl tracking-[0.45em] text-bright transition-colors placeholder:text-dim/50 focus:border-phosphor focus:outline-none"
+                  placeholder="······"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  maxlength="6"
+                  required
+                  autofocus
+                />
 
                 <button
                   type="submit"
                   :disabled="otpCode.length !== 6 || isLoading"
-                  class="w-full py-3.5 px-6 rounded-xl font-semibold text-sm
-                    bg-gradient-to-r from-emerald-500 to-green-600 text-white
-                    hover:from-emerald-400 hover:to-green-500
-                    disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed
-                    transform hover:scale-[1.02] active:scale-[0.98]
-                    transition-all duration-200
-                    shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40
-                    disabled:shadow-none
-                    relative overflow-hidden group"
+                  class="w-full border border-phosphor px-[22px] py-3 font-mono text-[13.5px] text-phosphor transition-colors hover:bg-phosphor/10 disabled:cursor-not-allowed disabled:border-line disabled:text-dim"
                 >
-                  <span class="relative z-10 flex items-center justify-center gap-2">
-                    <template v-if="isLoading">
-                      <div class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                      Verifying...
-                    </template>
-                    <template v-else>
-                      Complete Registration
-                      <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                      </svg>
-                    </template>
-                  </span>
-                  <div class="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                  {{ isLoading ? "$ verifying…" : "$ pair --device" }}
                 </button>
               </form>
             </div>
           </div>
 
-          <!-- Regular login - just OTP field -->
-          <form v-else class="space-y-6" @submit.prevent="handleOtpSubmit">
-            <div v-if="error" class="bg-red-500/10 border border-red-500/30 rounded-lg p-3 backdrop-blur-sm">
-              <p class="text-sm text-red-400 text-center">{{ error }}</p>
-              <p v-if="remainingAttempts !== null" class="text-xs text-red-300 text-center mt-1">
-                {{ remainingAttempts }} attempts remaining
-              </p>
-              <p v-if="rateLimitResetTime !== null" class="text-xs text-red-300 text-center mt-1">
-                Try again in {{ formatTime(rateLimitResetTime) }}
+          <!-- returning: unlock -->
+          <form v-else class="space-y-6 py-4" @submit.prevent="handleOtpSubmit">
+            <div class="text-center">
+              <p class="font-mono text-[12px] uppercase tracking-[0.22em] text-amber">// restricted shell</p>
+              <h1 class="mt-3 font-mono text-2xl font-bold text-bright">Admin access</h1>
+              <p class="mt-2 font-mono text-[13.5px] text-text-secondary">
+                <span class="text-phosphor">&gt;_</span> enter your authentication code
               </p>
             </div>
 
-            <div class="text-center space-y-4">
-              <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-green-600/20 backdrop-blur-sm border border-emerald-500/20 mb-2">
-                <svg
-                  class="w-10 h-10 text-emerald-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                  />
-                </svg>
-              </div>
-              <p class="text-sm text-[#d4d4ce]">
-                Enter your 6-digit code from<br />
-                <span class="text-emerald-400 font-medium">Google Authenticator</span>
-              </p>
+            <div v-if="error" class="border border-error/40 bg-error/10 px-4 py-3 text-center font-mono text-[13px]">
+              <p class="text-error">! {{ error }}</p>
+              <p v-if="remainingAttempts !== null" class="mt-1 text-[12px] text-dim">attempts remaining: {{ remainingAttempts }}</p>
+              <p v-if="rateLimitResetTime !== null" class="mt-1 text-[12px] text-dim">retry window: {{ formatTime(rateLimitResetTime) }}</p>
             </div>
 
-            <div class="space-y-3">
-              <label class="text-xs font-semibold text-emerald-400/90 block uppercase tracking-wider">
-                Authentication Code
-              </label>
-              <input
-                type="text"
-                :value="otpCode"
-                @input="onOtpInput"
-                class="block w-full px-4 py-3 bg-gradient-to-br from-[#141416] to-[#141416] border-2 border-emerald-500/20 rounded-xl text-[#f5f5f0] text-center text-3xl tracking-[0.5em] focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 transition-all font-mono placeholder:text-gray-700"
-                placeholder="• • • • • •"
-                inputmode="numeric"
-                pattern="[0-9]*"
-                maxlength="6"
-                required
-                autofocus
-              />
-            </div>
+            <input
+              type="text"
+              :value="otpCode"
+              @input="onOtpInput"
+              class="block w-full border border-line bg-abyss px-4 py-3 text-center font-mono text-3xl tracking-[0.45em] text-bright transition-colors placeholder:text-dim/50 focus:border-phosphor focus:outline-none"
+              placeholder="······"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              maxlength="6"
+              required
+              autofocus
+            />
 
             <button
               type="submit"
               :disabled="otpCode.length !== 6 || isLoading"
-              class="w-full py-3.5 px-6 rounded-xl font-semibold text-sm
-                bg-gradient-to-r from-emerald-500 to-green-600 text-white
-                hover:from-emerald-400 hover:to-green-500
-                disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed
-                transform hover:scale-[1.02] active:scale-[0.98]
-                transition-all duration-200
-                shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40
-                disabled:shadow-none
-                relative overflow-hidden group"
+              class="w-full border border-phosphor px-[22px] py-3 font-mono text-[13.5px] text-phosphor transition-colors hover:bg-phosphor/10 disabled:cursor-not-allowed disabled:border-line disabled:text-dim"
             >
-              <span class="relative z-10 flex items-center justify-center gap-2">
-                <template v-if="isLoading">
-                  <div class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                  Authenticating...
-                </template>
-                <template v-else>
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                  </svg>
-                  Unlock Dashboard
-                  <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
-                </template>
-              </span>
-              <div class="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+              {{ isLoading ? "$ verifying…" : "$ unlock --dashboard" }}
             </button>
           </form>
         </div>
-      </div>
 
-      <!-- Footer info -->
-      <div class="mt-6 text-center">
-        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#141416]/50 backdrop-blur-sm border border-emerald-500/10">
-          <svg class="w-3 h-3 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
-          </svg>
-          <p class="text-xs text-[#d4d4ce]">
-            {{ isRegistered === false
-              ? "One-time setup • Secure authentication"
-              : "Session expires after 5 minutes" }}
-          </p>
+        <!-- status line -->
+        <div class="flex items-center justify-between border-t border-line px-[18px] py-3 font-mono text-[11.5px] uppercase tracking-[0.16em] text-dim max-md:flex-col max-md:gap-1">
+          <span>{{ isRegistered === false ? "one-time setup · secret stays server-side" : "session ttl · 5 min" }}</span>
+          <span class="text-phosphor/70">tls: on</span>
         </div>
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+.cursor-block {
+  animation: blink 1.1s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor-block {
+    animation: none;
+  }
+}
+</style>
