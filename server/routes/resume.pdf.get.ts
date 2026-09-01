@@ -11,22 +11,63 @@
 import type { H3Event } from "h3";
 import { buildResumePdf, type ResumeData, type ResumePhoto } from "../utils/resume-pdf";
 
-// resolves /uploads/... and /myself.jpeg style paths against this origin and
-// loads the bytes for the PDF photo; any failure just means no photo
+// minimal worker binding shapes — same hand-rolled style as the uploads route
+type WorkerEnv = {
+  UPLOADS?: {
+    get: (key: string) => Promise<{
+      body: ReadableStream;
+      arrayBuffer: () => Promise<ArrayBuffer>;
+      httpMetadata: { contentType?: string };
+    } | null>;
+  };
+  ASSETS?: { fetch: (request: Request) => Promise<Response> };
+};
+
+// resolves /uploads/... (R2) and bundled assets like /myself.jpeg into the
+// bytes for the PDF photo. No network self-fetch on Workers: on workers.dev a
+// Worker fetching its own URL is rejected (error 1042), which silently dropped
+// the photo from production PDFs. Tries R2 → assets binding → plain fetch
+// (the latter only ever succeeds on node runtimes, i.e. local dev).
+// Any failure just means no photo.
 async function loadPhoto(event: H3Event, imagePath: string): Promise<ResumePhoto | null> {
-  try {
-    const url = new URL(imagePath, getRequestURL(event).origin);
+  const sources: Array<() => Promise<{ bytes: ArrayBuffer; contentType: string } | null>> = [];
+  const env = (event.context as { cloudflare?: { env?: WorkerEnv } }).cloudflare?.env;
+  const url = new URL(imagePath, getRequestURL(event).origin);
+
+  if (url.pathname.startsWith("/uploads/") && env?.UPLOADS) {
+    sources.push(async () => {
+      const key = decodeURIComponent(url.pathname.slice("/uploads/".length));
+      const object = key ? await env.UPLOADS!.get(key) : null;
+      if (!object) return null;
+      return { bytes: await object.arrayBuffer(), contentType: object.httpMetadata?.contentType ?? "" };
+    });
+  }
+
+  if (env?.ASSETS) {
+    sources.push(async () => {
+      const res = await env.ASSETS!.fetch(new Request(url));
+      if (!res.ok) return null;
+      return { bytes: await res.arrayBuffer(), contentType: res.headers.get("content-type") ?? "" };
+    });
+  }
+
+  sources.push(async () => {
     const res = await fetch(url);
     if (!res.ok) return null;
-    const contentType = res.headers.get("content-type") ?? "";
-    if (!/image\/(png|jpe?g)/.test(contentType)) return null; // pdf-lib can't embed gif/webp
-    return {
-      data: new Uint8Array(await res.arrayBuffer()),
-      kind: contentType.includes("png") ? "png" : "jpg",
-    };
-  } catch {
-    return null;
+    return { bytes: await res.arrayBuffer(), contentType: res.headers.get("content-type") ?? "" };
+  });
+
+  for (const load of sources) {
+    try {
+      const result = await load();
+      if (!result) continue;
+      if (!/image\/(png|jpe?g)/.test(result.contentType)) continue; // not image bytes — try the next source
+      return { data: new Uint8Array(result.bytes), kind: result.contentType.includes("png") ? "png" : "jpg" };
+    } catch {
+      // try the next source
+    }
   }
+  return null;
 }
 
 export default defineEventHandler(async (event) => {
