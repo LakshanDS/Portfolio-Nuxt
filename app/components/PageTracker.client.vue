@@ -25,4 +25,6 @@ onMounted(trackVisit);
 watch(() => route.fullPath, trackVisit);
 </script>
 
-<template><!-- renders nothing --></template>
+<!-- real element: Nuxt's client-only wrapper crashes on a null render
+     (empty/comment-only templates return null in prod builds) -->
+<template><span hidden aria-hidden="true" /></template>

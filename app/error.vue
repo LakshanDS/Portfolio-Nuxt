@@ -14,7 +14,6 @@ useSeoMeta({ title: () => `${props.error.statusCode} — lost signal` });
     <p class="mt-3 font-mono text-[13.5px] text-dim">
       $ {{ error.statusCode === 404 ? "route not found in registry" : error.statusMessage || "unhandled fault" }}
     </p>
-    <pre class="mt-6 max-w-full overflow-auto font-mono text-[11px] text-dim">{{ error.stack || error.message || JSON.stringify(error) }}</pre>
     <button
       class="mt-8 border border-phosphor px-[22px] py-3 font-mono text-[13.5px] text-phosphor transition-colors hover:bg-phosphor/10"
       @click="clearError({ redirect: '/' })"
