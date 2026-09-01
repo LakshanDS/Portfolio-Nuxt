@@ -291,7 +291,7 @@ function renderBlock(tk: Token): VNode | null {
         h(
           "div",
           { class: "flex justify-between border-b border-line px-3.5 py-[6px] font-mono text-[10.5px] uppercase tracking-[0.14em] text-dim" },
-          [h("span", "code"), h("span", `${props.project.id}/readme.md`)],
+          [h("span", "code"), h("span", `${props.project.title}/readme.md`)],
         ),
         h("div", { class: "overflow-x-auto px-4 py-3.5" }, [
           h(
@@ -442,7 +442,7 @@ const hasActions = computed(() => Boolean(props.project.demoUrl || props.project
           <span aria-hidden class="inline-block transition-transform group-hover:-translate-x-1">←</span> registry
         </b>
         {{ " · " }}
-        {{ props.project.id }}/readme.md
+        {{ props.project.title }}/readme.md
       </NuxtLink>
 
       <div class="brackets grid border border-line bg-panel/55 max-lg:grid-cols-1 lg:grid-cols-[minmax(0,1fr)_460px]">
@@ -515,10 +515,6 @@ const hasActions = computed(() => Boolean(props.project.demoUrl || props.project
             {{ initialsFor(props.project.title) }}
           </div>
           <div class="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(74,222,128,0.06),transparent_38%,rgba(10,10,11,0.5))]" />
-          <span aria-hidden class="absolute -left-px -top-px h-[10px] w-[10px] border-l-2 border-t-2 border-phosphor" />
-          <span class="absolute bottom-2.5 left-3.5 font-mono text-[10px] uppercase tracking-[0.18em] text-dim/70">
-            img 00 · captured from the live deployment
-          </span>
         </div>
       </div>
     </div>
@@ -552,7 +548,7 @@ const hasActions = computed(() => Boolean(props.project.demoUrl || props.project
       </aside>
 
       <div class="min-w-0 max-lg:col-start-1 lg:col-start-2 lg:row-start-1">
-        <div v-if="docSource" class="max-w-[74ch]">
+        <div v-if="docSource" class="max-w-[74ch] [&>*:first-child]:mt-0">
           <DocBlocks :tokens="blocks" />
         </div>
         <div v-else class="border border-dashed border-line bg-panel/50 px-6 py-16 text-center">

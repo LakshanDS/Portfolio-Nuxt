@@ -35,8 +35,53 @@ function yearOf(date: string): string {
 }
 
 const sorted = computed(() => [...props.items].sort((a, b) => quarterTime(b.date) - quarterTime(a.date)));
-const years = computed(() => [...new Set(sorted.value.map((i) => yearOf(i.date)))].sort((a, b) => Number(b) - Number(a)));
-const firstYear = computed(() => years.value[years.value.length - 1] ?? String(new Date().getFullYear()));
+
+// section loads CAP entries; --more reveals BATCH once, then goes to /roadmap
+const CAP = 6;
+const BATCH = 2;
+const SCROLL_COLLAPSE_PX = 400; // scroll distance from extend point before auto-collapse
+const visibleCount = ref(CAP);
+const extended = ref(false);
+// items within CAP render directly; the rest ride the career-collapse animation
+const baseItems = computed(() => sorted.value.slice(0, CAP));
+const extraItems = computed(() => sorted.value.slice(CAP, visibleCount.value));
+const visibleItems = computed(() => sorted.value.slice(0, visibleCount.value));
+const hiddenCount = computed(() => sorted.value.length - visibleItems.value.length);
+function onMore() {
+  if (!extended.value) {
+    extended.value = true;
+    visibleCount.value += BATCH;
+  } else {
+    navigateTo("/roadmap");
+  }
+}
+
+// collapse the extension once the user scrolls away from where they opened it
+let anchor = 0;
+function onScroll() {
+  if (Math.abs(window.scrollY - anchor) > SCROLL_COLLAPSE_PX) {
+    extended.value = false;
+    visibleCount.value = CAP;
+  }
+}
+watch(visibleCount, (value) => {
+  if (value > CAP) {
+    anchor = window.scrollY;
+    window.addEventListener("scroll", onScroll, { passive: true });
+  } else {
+    window.removeEventListener("scroll", onScroll);
+  }
+});
+onBeforeUnmount(() => window.removeEventListener("scroll", onScroll));
+
+const years = computed(() =>
+  [...new Set(visibleItems.value.map((i) => yearOf(i.date)))].sort((a, b) => Number(b) - Number(a)),
+);
+// header range always reflects the full log, not the visible slice
+const firstYear = computed(() => {
+  const all = [...new Set(sorted.value.map((i) => yearOf(i.date)))].sort((a, b) => Number(b) - Number(a));
+  return all[all.length - 1] ?? String(new Date().getFullYear());
+});
 </script>
 
 <template>
@@ -69,9 +114,20 @@ const firstYear = computed(() => years.value[years.value.length - 1] ?? String(n
             :year="year"
             :is-current-year="Number(year) === new Date().getFullYear()"
             :is-first="yi === 0"
-            :items="sorted.filter((i) => yearOf(i.date) === year)"
+            :items="baseItems.filter((i) => yearOf(i.date) === year)"
+            :overflow-items="extraItems.filter((i) => yearOf(i.date) === year)"
           />
         </template>
+
+        <div v-if="hiddenCount > 0" class="mx-[18px] mb-3 mt-1 border-t border-dashed border-line pt-2.5">
+          <button
+            type="button"
+            class="block w-full border border-dashed border-line py-1.5 text-center font-mono text-[11.5px] text-dim transition-colors hover:border-phosphor/50 hover:text-phosphor"
+            @click="onMore"
+          >
+            --more +{{ Math.min(BATCH, hiddenCount) }} · {{ hiddenCount }} hidden · <span class="text-phosphor/70">--all →</span>
+          </button>
+        </div>
       </div>
 
       <div data-reveal style="--reveal-delay: 120ms">

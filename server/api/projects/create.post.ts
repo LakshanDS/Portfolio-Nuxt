@@ -14,8 +14,8 @@ export default defineEventHandler(async (event) => {
     const now = new Date().toISOString();
     await db
       .prepare(
-        `INSERT INTO Project (id, title, description, category, tags, status, imageUrl, demoUrl, repoUrl, content, displayOrder, createdAt, updatedAt)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO Project (id, title, description, category, tags, status, year, imageUrl, demoUrl, repoUrl, content, displayOrder, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         id,
@@ -24,6 +24,7 @@ export default defineEventHandler(async (event) => {
         body.category,
         JSON.stringify(body.tags),
         body.status,
+        body.year ?? "",
         body.imageUrl ?? null,
         body.demoUrl ?? null,
         body.repoUrl ?? null,

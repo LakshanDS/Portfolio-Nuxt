@@ -52,6 +52,8 @@ export const project = sqliteTable("Project", {
   category: text().notNull(),
   tags: text().notNull(),
   status: text().notNull(),
+  // career.log placement — "2026" or "2026 Q1"; empty hides the project there
+  year: text().notNull().default(""),
   imageUrl: text(),
   demoUrl: text(),
   repoUrl: text(),

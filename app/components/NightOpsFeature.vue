@@ -101,8 +101,8 @@ const docHref = computed(() => props.feature.actions.find((a) => a.kind === "doc
         </div>
       </div>
 
-      <div v-if="props.feature.beats?.length" class="grid grid-cols-3 gap-[30px] px-[34px] pb-1 pt-8 max-md:grid-cols-1 max-md:px-[22px]">
-        <div v-for="beat in props.feature.beats" :key="beat.label" class="border-t border-line pt-[14px]">
+      <div v-if="props.feature.beats?.length" class="grid grid-cols-2 gap-[30px] px-[34px] pb-1 pt-8 max-md:grid-cols-1 max-md:px-[22px]">
+        <div v-for="beat in props.feature.beats.slice(0, 2)" :key="beat.label" class="border-t border-line pt-[14px]">
           <div class="mb-2 font-mono text-[11px] uppercase tracking-[0.16em] text-phosphor">{{ beat.label }}</div>
           <p class="text-[0.95rem] leading-[1.55] text-text-secondary">{{ beat.text }}</p>
         </div>
@@ -111,7 +111,7 @@ const docHref = computed(() => props.feature.actions.find((a) => a.kind === "doc
       <div v-if="props.content" class="mx-[34px] mb-[34px] mt-8 border border-line bg-[#0D0D0F] max-md:mx-[22px]">
         <div class="flex justify-between border-b border-line px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.12em] text-dim">
           <span>
-            {{ props.feature.id }}/<span class="text-phosphor">README.md</span>
+            {{ props.feature.name }}/<span class="text-phosphor">README.md</span>
           </span>
           <span>markdown · rendered</span>
         </div>

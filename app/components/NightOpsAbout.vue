@@ -152,9 +152,9 @@ function bioText(line: string): string {
         <div
           v-if="stats"
           data-reveal
-          class="mb-[34px] mt-4 flex flex-wrap border border-dashed border-line bg-panel/40 px-[18px] py-3 font-mono text-[12.5px] tracking-[0.04em] text-dim"
+          class="mb-[34px] mt-4 flex flex-nowrap overflow-x-auto border border-dashed border-line bg-panel/40 px-[18px] py-3 font-mono text-[12.5px] tracking-[0.04em] text-dim max-md:flex-wrap"
         >
-          <b class="font-medium text-phosphor">{{ stats.pipelinesFixed }}</b>&nbsp;pipelines fixed
+          <b class="font-medium text-phosphor">{{ stats.pipelinesFixed }}</b>&nbsp;total projects
           <i class="not-italic opacity-55 mx-2.5">·</i>
           <b class="font-medium text-phosphor">{{ String(stats.projectsCount).padStart(2, "0") }}</b>&nbsp;projects shipped
           <i class="not-italic opacity-55 mx-2.5">·</i>

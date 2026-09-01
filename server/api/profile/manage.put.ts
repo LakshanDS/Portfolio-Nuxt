@@ -24,8 +24,9 @@ export default defineEventHandler(async (event) => {
       await dbUpdateProfile(event, profileId, profileData);
     }
 
-    if (statsId && statsData) {
-      await dbUpdateProfileStats(event, statsId, statsData);
+    if (statsData) {
+      if (statsId) await dbUpdateProfileStats(event, statsId, statsData);
+      else await dbCreateProfileStats(event, statsData);
     }
 
     return { success: true };

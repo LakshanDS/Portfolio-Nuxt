@@ -3,8 +3,7 @@
  * (photo + profile + key/developing projects + education + experience +
  * skills), and the download is counted into ProfileStats (skipping
  * prefetch/range requests). Key projects are the first 3 by display order,
- * the developing one is the first project with "developing" status, and
- * in-progress roadmap items join it in the "Developing Projects" section.
+ * developing ones are the first 2 projects with "developing" status.
  * "See Doc" links point at the /projects/:id dossier and only appear when the
  * project has documentation content.
  */
@@ -80,16 +79,12 @@ export default defineEventHandler(async (event) => {
 
   // db.batch always yields one result per statement — satisfy noUncheckedIndexedAccess
   const rowsOf = (r: { results: Record<string, unknown>[] } | undefined) => r?.results ?? [];
-  const [profileRes, projectsRes, roadmapRes, experienceRes, educationRes, skillsRes] = await db.batch<
+  const [profileRes, projectsRes, experienceRes, educationRes, skillsRes] = await db.batch<
     Record<string, unknown>
   >([
     db.prepare(`SELECT * FROM Profile LIMIT 1`),
     db.prepare(
       `SELECT id, title, description, status, tags, content FROM Project ORDER BY displayOrder ASC, createdAt DESC`,
-    ),
-    db.prepare(
-      `SELECT title, description, status FROM RoadmapItem
-       WHERE LOWER(TRIM(status)) = 'in-progress' ORDER BY date DESC LIMIT 3`,
     ),
     db.prepare(
       `SELECT position, company, description, startDate, endDate FROM Experience ORDER BY startDate DESC LIMIT 3`,
@@ -133,19 +128,7 @@ export default defineEventHandler(async (event) => {
     docUrl: String(row.content ?? "").trim() ? `${origin}/projects/${row.id}` : null,
   }));
   const keyProjects = allProjects.slice(0, 3);
-  const developingProjects = allProjects.filter((p) => p.status === "developing").slice(0, 1);
-
-  // in-progress roadmap items join the developing projects, linked to their
-  // project dossier when a same-titled project has docs
-  const projectByTitle = new Map(allProjects.map((p) => [p.title.trim().toLowerCase(), p]));
-  const developingTitles = new Set(developingProjects.map((p) => p.title.trim().toLowerCase()));
-  const roadmapFocus = rowsOf(roadmapRes)
-    .map((row) => {
-      const title = String(row.title ?? "");
-      const match = projectByTitle.get(title.trim().toLowerCase());
-      return { title, description: String(row.description ?? ""), tags: [] as string[], docUrl: match?.docUrl ?? null };
-    })
-    .filter((item) => !developingTitles.has(item.title.trim().toLowerCase()));
+  const developingProjects = allProjects.filter((p) => p.status === "developing").slice(0, 2);
 
   const data: Omit<ResumeData, "photo"> = {
     profile: profile
@@ -164,7 +147,7 @@ export default defineEventHandler(async (event) => {
         }
       : null,
     projects: keyProjects.map(({ title, description, tags, docUrl }) => ({ title, description, tags, docUrl })),
-    developingProjects: [...developingProjects, ...roadmapFocus].map(({ title, description, tags, docUrl }) => ({
+    developingProjects: developingProjects.map(({ title, description, tags, docUrl }) => ({
       title,
       description,
       tags,

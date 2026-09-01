@@ -10,6 +10,8 @@ type YearItem = {
 const props = defineProps<{
   year: string;
   items: YearItem[];
+  // section-level overflow (homepage --more) — animates open/closed via career-collapse
+  overflowItems?: YearItem[];
   isCurrentYear: boolean;
   isFirst: boolean;
 }>();
@@ -17,7 +19,7 @@ const props = defineProps<{
 const CAP = 3; // entries visible when collapsed
 const BATCH = 2; // entries revealed per "view more" click
 const MAX = 5; // never more than this visible at once
-const SCROLL_COLLAPSE_PX = 140; // scroll distance from expand point before auto-collapse
+const SCROLL_COLLAPSE_PX = 400; // scroll distance from expand point before auto-collapse
 
 const visible = ref(CAP);
 const base = computed(() => props.items.slice(0, CAP));
@@ -106,6 +108,33 @@ function viewMore() {
         <ul>
           <li
             v-for="item in extras"
+            :key="item.id"
+            class="flex items-baseline gap-3 py-[7px] pl-1 font-mono text-[13px]"
+            :class="statusFor(item.status).rowCls"
+          >
+            <span class="flex-shrink-0" :class="statusFor(item.status).markCls">{{ statusFor(item.status).mark }}</span>
+            <span class="text-text-secondary">
+              {{ item.title.toLowerCase() }}
+              <small class="mt-0.5 block text-[11.5px] text-dim">
+                {{ (item.category ?? item.description).toLowerCase() }}
+              </small>
+            </span>
+            <span
+              class="ml-auto flex-shrink-0 border px-2 py-0.5 font-mono text-[10.5px]"
+              :class="statusFor(item.status).chipCls"
+            >
+              {{ statusFor(item.status).chip }}
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="career-collapse" :style="{ gridTemplateRows: overflowItems?.length ? '1fr' : '0fr' }">
+      <div>
+        <ul>
+          <li
+            v-for="item in overflowItems ?? []"
             :key="item.id"
             class="flex items-baseline gap-3 py-[7px] pl-1 font-mono text-[13px]"
             :class="statusFor(item.status).rowCls"

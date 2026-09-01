@@ -1,0 +1,1 @@
+ALTER TABLE `Project` ADD `year` text DEFAULT '' NOT NULL;
