@@ -26,6 +26,31 @@ const filteredIcons = computed(() =>
 function categoryCount(category: string) {
   return iconMetadata.filter((icon) => icon.category === category).length;
 }
+
+// Render the grid in pages — mounting all ~1.5k <Icon> tiles at once is slow.
+const PAGE_SIZE = 120;
+const visibleCount = ref(PAGE_SIZE);
+const gridBottom = ref<HTMLElement | null>(null);
+let observer: IntersectionObserver | null = null;
+
+const visibleIcons = computed(() => filteredIcons.value.slice(0, visibleCount.value));
+
+watch([searchQuery, selectedCategory], () => {
+  visibleCount.value = PAGE_SIZE;
+});
+
+onMounted(() => {
+  observer = new IntersectionObserver((entries) => {
+    if (entries.some((e) => e.isIntersecting) && visibleCount.value < filteredIcons.value.length) {
+      visibleCount.value += PAGE_SIZE;
+    }
+  });
+});
+watch(gridBottom, (el, prev) => {
+  if (prev) observer?.unobserve(prev);
+  if (el) observer?.observe(el);
+});
+onBeforeUnmount(() => observer?.disconnect());
 </script>
 
 <template>
@@ -110,7 +135,7 @@ function categoryCount(category: string) {
           </div>
           <div v-else class="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10">
             <button
-              v-for="icon in filteredIcons"
+              v-for="icon in visibleIcons"
               :key="icon.name"
               type="button"
               class="group relative border p-3 transition-all duration-200"
@@ -126,9 +151,9 @@ function categoryCount(category: string) {
               </div>
             </button>
           </div>
+          <!-- Load more on scroll -->
+          <div ref="gridBottom" />
         </div>
-
-        <!-- Footer -->
         <div class="border-t border-[#232326] bg-[#141416]/50 p-4">
           <div class="flex items-center justify-between text-xs text-[#d4d4ce]">
             <span>

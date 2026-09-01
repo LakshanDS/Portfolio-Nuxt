@@ -1,13 +1,20 @@
 // DB and admin UI store icon names in react-icons format
 // ("FaDocker", "SiTypescript"); render via toIconName() in app/utils/icons.ts.
 // Consumer of the raw list: <UiIconPicker> (dashboard icon fields).
+import { toIconName } from "./icons";
+// Build-generated from @iconify-json packages (modules/icon-metadata.ts).
+import { generatedIcons } from "#build/icon-metadata";
+
 export interface IconMetadata {
   name: string;
   displayName: string;
   category: string;
 }
 
-export const iconMetadata: IconMetadata[] = [
+// Hand-curated legacy set — every name a DB value could already hold,
+// kept verbatim so old entries keep rendering. New icons come from the
+// generated list below.
+export const curatedIcons: IconMetadata[] = [
   { name: "FaCode", displayName: "Code", category: "Development" },
   { name: "FaTerminal", displayName: "Terminal", category: "Development" },
   { name: "FaBug", displayName: "Bug", category: "Development" },
@@ -136,6 +143,21 @@ export const iconMetadata: IconMetadata[] = [
   { name: "SiNotion", displayName: "Notion", category: "Brands" },
   { name: "SiFigma", displayName: "Figma", category: "Brands" },
   { name: "SiSketch", displayName: "Sketch", category: "Brands" },
+];
+
+// Generated FA6 entries that duplicate a curated glyph are dropped: each
+// curated id blocks itself, and a legacy "fa:x" render also blocks
+// "fa-solid:x" (same FA5/FA6 glyph).
+const covered = new Set<string>();
+for (const icon of curatedIcons) {
+  const id = toIconName(icon.name);
+  covered.add(id);
+  if (id.startsWith("fa:")) covered.add(`fa-solid:${id.slice(3)}`);
+}
+
+export const iconMetadata: IconMetadata[] = [
+  ...curatedIcons,
+  ...generatedIcons.filter((icon) => !covered.has(toIconName(icon.name))),
 ];
 
 export const iconCategories = Array.from(

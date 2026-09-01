@@ -31,7 +31,7 @@ function quarterTime(date: string): number {
 
 function yearOf(date: string): string {
   const y = date.match(/(\d{4})/);
-  return y ? y[1] : date;
+  return y ? y[1] ?? date : date;
 }
 
 const sorted = computed(() => [...props.items].sort((a, b) => quarterTime(b.date) - quarterTime(a.date)));

@@ -11,7 +11,7 @@ export function statusFor(status: string): { label: string; wip: boolean; dimmed
 }
 
 export function initialsFor(title: string): string {
-  const words = title.split(/\s+/).filter(Boolean);
-  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
-  return title.slice(0, 2).toUpperCase();
+  const [first = "", second = ""] = title.split(/\s+/).filter(Boolean);
+  const initials = `${first.at(0) ?? ""}${second.at(0) ?? ""}`;
+  return initials.length === 2 ? initials.toUpperCase() : title.slice(0, 2).toUpperCase();
 }

@@ -25,7 +25,7 @@ async function getRequestLocation(event: any): Promise<GeoLocationData | null> {
 
   // Fallback for non-Cloudflare hosting: external IP lookup
   const forwarded = getHeader(event, "x-forwarded-for");
-  const ip = forwarded ? forwarded.split(",")[0].trim() : null;
+  const ip = forwarded ? forwarded.split(",")[0]?.trim() : null;
   if (!ip || ip === "127.0.0.1" || ip === "::1") return null;
 
   try {

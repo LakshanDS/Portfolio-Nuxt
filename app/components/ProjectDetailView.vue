@@ -6,6 +6,7 @@ import { computed, defineComponent, h, onMounted, onUnmounted, ref, watch } from
 import type { PropType, VNode } from "vue";
 import { marked } from "marked";
 import type { Token, Tokens } from "marked";
+import { UiMermaidDiagram } from "#components";
 import { statusFor, initialsFor } from "~/utils/projects";
 
 type Project = {
@@ -53,8 +54,8 @@ const headings = computed(() => {
   docSource.value.split("\n").forEach((line) => {
     const match = line.match(/^(#{1,3})\s+(.+)$/);
     if (match) {
-      const level = match[1].length;
-      const text = match[2];
+      const level = match[1]!.length;
+      const text = match[2]!;
       const id = slug(text);
 
       if (level <= 2) {
@@ -86,7 +87,7 @@ function updateActiveSection() {
 
   if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 50) {
     if (headings.value.length > 0) {
-      currentSection = headings.value[headings.value.length - 1].id;
+      currentSection = headings.value[headings.value.length - 1]!.id;
     }
   } else {
     for (const heading of headings.value) {
@@ -169,11 +170,11 @@ function renderImage(token: { href: string; text: string }): VNode {
 
 function renderInline(tokens: Token[] | undefined): (VNode | string)[] {
   if (!tokens) return [];
-  return tokens.flatMap((tk): VNode | string => {
+  return tokens.flatMap((tk): VNode | string | (VNode | string)[] => {
     switch (tk.type) {
       case "text": {
         const t = tk as Tokens.Text;
-        return t.tokens?.length ? renderInline(t.tokens) : t.text;
+        return t.tokens?.length ? renderInline(t.tokens) : [t.text];
       }
       case "escape":
         return (tk as Tokens.Escape).text;
@@ -208,7 +209,7 @@ function renderInline(tokens: Token[] | undefined): (VNode | string)[] {
         return h("br");
       case "html":
         // raw inline html — own CMS content
-        return h("span", { innerHTML: (tk as Tokens.Html).text });
+        return h("span", { innerHTML: (tk as Tokens.HTML).text });
       default:
         return String((tk as Tokens.Generic).text ?? "");
     }
@@ -343,7 +344,7 @@ function renderBlock(tk: Token): VNode | null {
       return renderList(tk as Tokens.List);
     case "html":
       // raw block html — own CMS content
-      return h("div", { innerHTML: (tk as Tokens.Html).text });
+      return h("div", { innerHTML: (tk as Tokens.HTML).text });
     case "space":
       return null;
     case "text":

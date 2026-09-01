@@ -5,19 +5,20 @@ export default defineEventHandler(async (event) => {
     const db = useDb(event);
     const { results } = await db
       .prepare(`SELECT id, title, description, date, category, status, tags FROM RoadmapItem`)
-      .all();
+      .all<{ id: string; title: string; description: string; date: string; category: string; status: string; tags: string }>();
 
     const statusPriority: Record<string, number> = {
       planned: 0,
       "in-progress": 1,
       completed: 2,
     };
+    const priorityOf = (status: string) => statusPriority[status] ?? 0;
     return results
-      .map((row) => ({ ...row, tags: parseTags(row.tags) }))
+      .map(({ tags, ...row }) => ({ ...row, tags: parseTags(tags) }))
       .sort((a, b) => {
-        const priorityDiff = statusPriority[a.status as string] - statusPriority[b.status as string];
+        const priorityDiff = priorityOf(a.status) - priorityOf(b.status);
         if (priorityDiff !== 0) return priorityDiff;
-        return new Date(b.date as string).getTime() - new Date(a.date as string).getTime();
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
       });
   } catch (error) {
     console.error("Error fetching roadmap items:", error);

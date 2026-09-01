@@ -26,10 +26,10 @@ export default defineEventHandler(async (event) => {
     // skills by displayOrder within each category — replicate that grouping.
     const { results: categories } = await db
       .prepare(`SELECT id FROM SkillCategory ORDER BY displayOrder ASC`)
-      .all();
+      .all<{ id: string }>();
     const { results: skills } = await db
       .prepare(`SELECT id, name, icon, iconColor, categoryId FROM Skill ORDER BY displayOrder ASC`)
-      .all();
+      .all<{ id: string; name: string; icon: string | null; iconColor: string | null; categoryId: string }>();
 
     const tools = categories.flatMap((category) =>
       skills

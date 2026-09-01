@@ -32,9 +32,9 @@ export default defineEventHandler(async (event) => {
       db.prepare(`SELECT isOpenToWork FROM ProfileStatus LIMIT 1`),
     ]);
     return {
-      profile: publicProfile(profileRes.results[0] ?? { ...defaultProfile }),
-      stats: statsRes.results[0] ?? null,
-      isOpenToWork: Boolean(statusRes.results[0]?.isOpenToWork),
+      profile: publicProfile(profileRes?.results[0] ?? { ...defaultProfile }),
+      stats: statsRes?.results[0] ?? null,
+      isOpenToWork: Boolean(statusRes?.results[0]?.isOpenToWork),
     };
   } catch (error) {
     // DB unavailable (e.g. migrations not applied) — serve defaults, never 500:

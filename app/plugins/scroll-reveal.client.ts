@@ -29,5 +29,7 @@ export default defineNuxtPlugin((nuxtApp) => {
   }
 
   nuxtApp.hook("app:mounted", observe);
-  nuxtApp.hook("page:finish", () => setTimeout(observe, 0));
+  nuxtApp.hook("page:finish", () => {
+    setTimeout(observe, 0);
+  });
 });
