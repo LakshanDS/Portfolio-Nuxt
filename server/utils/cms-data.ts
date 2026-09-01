@@ -79,6 +79,27 @@ export async function dbUpdateProfileStats(event: DbEvent, id: string, data: Row
   return row;
 }
 
+// Singleton row is usually created by the first resume download; this covers
+// saving stats before that ever happened.
+export async function dbCreateProfileStats(event: DbEvent, data: Row): Promise<Row> {
+  const row = await useDb(event)
+    .prepare(
+      `INSERT INTO ProfileStats ("id", "pipelinesFixed", "projectsCount", "selfCommits", "experience", "resumeDownloads", "createdAt", "updatedAt")
+       VALUES (?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP, ?) RETURNING *`,
+    )
+    .bind(
+      crypto.randomUUID(),
+      data.pipelinesFixed ?? "0",
+      data.projectsCount ?? 0,
+      data.selfCommits ?? 0,
+      data.experience ?? "0",
+      nowIso(),
+    )
+    .first();
+  if (!row) throw new Error("ProfileStats insert failed");
+  return row;
+}
+
 export async function dbGetAboutCards(event: DbEvent): Promise<Row[]> {
   const { results } = await useDb(event)
     .prepare(`SELECT * FROM AboutCard ORDER BY displayOrder ASC`)

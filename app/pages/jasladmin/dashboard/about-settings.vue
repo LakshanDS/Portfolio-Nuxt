@@ -57,7 +57,7 @@ const [{ data: settingsData, error: settingsError, refresh: refreshSettings },
        { data: manageData, error: manageError, refresh: refreshManage },
        { data: cardsData, error: cardsError, refresh: refreshCards }] = await Promise.all([
   useFetch<AboutSettings | null>("/api/about-settings"),
-  useFetch<{ profile: Record<string, string> | null }>("/api/profile/manage"),
+  useFetch<{ profile: Record<string, string> | null; stats: Record<string, unknown> | null }>("/api/profile/manage"),
   useFetch<AboutCard[]>("/api/about-cards"),
 ]);
 
@@ -99,6 +99,16 @@ const contactInfo = ref<ContactInfo>({
 const editingSection = ref<"contact" | null>(null);
 const editData = ref<Record<string, string>>({});
 const savingSection = ref(false);
+
+// the /about numbers line — ProfileStats singleton; resumeDownloads is
+// auto-counted on resume downloads, so display-only here
+const statsForm = ref({
+  pipelinesFixed: String(manageData.value?.stats?.pipelinesFixed ?? "0"),
+  projectsCount: Number(manageData.value?.stats?.projectsCount ?? 0),
+  selfCommits: Number(manageData.value?.stats?.selfCommits ?? 0),
+  experience: String(manageData.value?.stats?.experience ?? "0"),
+});
+const resumeDownloads = computed(() => Number(manageData.value?.stats?.resumeDownloads ?? 0));
 
 const isAddingCard = ref(false);
 const editingCardId = ref<string | null>(null);
@@ -186,6 +196,8 @@ async function saveSettings() {
         method: "PUT",
         body: {
           profileId: "default",
+          statsId: manageData.value?.stats?.id,
+          statsData: { ...statsForm.value },
           profileData: {
             name: personalInfo.value.name,
             title: personalInfo.value.title,
@@ -494,6 +506,57 @@ const labelCls = "font-mono text-[11px] uppercase tracking-[0.14em] text-dim";
           </div>
         </UiCard>
       </div>
+
+      <!-- STATS READOUT (the numbers line under the about hero) -->
+      <UiCard>
+        <div class="border-b border-line p-5">
+          <h2 class="font-mono text-sm uppercase tracking-[0.14em] text-dim">stats readout</h2>
+          <p class="mt-0.5 text-xs text-dim">the numbers line under the about hero</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 p-5 sm:grid-cols-3 lg:grid-cols-5">
+          <div>
+            <label :class="labelCls" class="mb-1 block">total projects</label>
+            <input
+              v-model="statsForm.pipelinesFixed"
+              type="text"
+              :class="inputCls"
+              @input="hasChanges = true"
+            />
+          </div>
+          <div>
+            <label :class="labelCls" class="mb-1 block">projects shipped</label>
+            <input
+              v-model.number="statsForm.projectsCount"
+              type="number"
+              :class="inputCls"
+              @input="hasChanges = true"
+            />
+          </div>
+          <div>
+            <label :class="labelCls" class="mb-1 block">commits pushed</label>
+            <input
+              v-model.number="statsForm.selfCommits"
+              type="number"
+              :class="inputCls"
+              @input="hasChanges = true"
+            />
+          </div>
+          <div>
+            <label :class="labelCls" class="mb-1 block">yrs in service</label>
+            <input
+              v-model="statsForm.experience"
+              type="text"
+              :class="inputCls"
+              @input="hasChanges = true"
+            />
+          </div>
+          <div>
+            <label :class="labelCls" class="mb-1 block">resume pulls</label>
+            <p class="text-sm leading-[38px] text-bright">{{ resumeDownloads }}</p>
+          </div>
+        </div>
+      </UiCard>
 
       <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <!-- ABOUT CARDS -->
