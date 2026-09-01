@@ -78,6 +78,8 @@ export default defineEventHandler(async (event) => {
 
   const db = useDb(event);
 
+  // db.batch always yields one result per statement — satisfy noUncheckedIndexedAccess
+  const rowsOf = (r: { results: Record<string, unknown>[] } | undefined) => r?.results ?? [];
   const [profileRes, projectsRes, roadmapRes, experienceRes, educationRes, skillsRes] = await db.batch<
     Record<string, unknown>
   >([
@@ -102,7 +104,7 @@ export default defineEventHandler(async (event) => {
     ),
   ]);
 
-  const profile = profileRes.results[0] ?? null;
+  const profile = rowsOf(profileRes)[0] ?? null;
 
   // mirrors the old route's status normalization (handles the 'devloping' typo)
   const normalizeStatus = (status: string) => {
@@ -121,7 +123,7 @@ export default defineEventHandler(async (event) => {
       return [];
     }
   };
-  const allProjects = projectsRes.results.map((row) => ({
+  const allProjects = rowsOf(projectsRes).map((row) => ({
     id: String(row.id ?? ""),
     title: String(row.title ?? ""),
     description: String(row.description ?? ""),
@@ -137,7 +139,7 @@ export default defineEventHandler(async (event) => {
   // project dossier when a same-titled project has docs
   const projectByTitle = new Map(allProjects.map((p) => [p.title.trim().toLowerCase(), p]));
   const developingTitles = new Set(developingProjects.map((p) => p.title.trim().toLowerCase()));
-  const roadmapFocus = roadmapRes.results
+  const roadmapFocus = rowsOf(roadmapRes)
     .map((row) => {
       const title = String(row.title ?? "");
       const match = projectByTitle.get(title.trim().toLowerCase());
@@ -145,7 +147,7 @@ export default defineEventHandler(async (event) => {
     })
     .filter((item) => !developingTitles.has(item.title.trim().toLowerCase()));
 
-  const data: ResumeData = {
+  const data: Omit<ResumeData, "photo"> = {
     profile: profile
       ? {
           name: String(profile.name ?? ""),
@@ -168,21 +170,21 @@ export default defineEventHandler(async (event) => {
       tags,
       docUrl,
     })),
-    experience: experienceRes.results.map((row) => ({
+    experience: rowsOf(experienceRes).map((row) => ({
       title: String(row.position ?? ""),
       place: String(row.company ?? ""),
       description: String(row.description ?? ""),
       startDate: String(row.startDate ?? ""),
       endDate: row.endDate ? String(row.endDate) : null,
     })),
-    education: educationRes.results.map((row) => ({
+    education: rowsOf(educationRes).map((row) => ({
       title: String(row.institution ?? ""),
       place: String(row.title ?? ""),
       description: String(row.description ?? ""),
       startDate: String(row.startDate ?? ""),
       endDate: row.endDate ? String(row.endDate) : null,
     })),
-    skills: skillsRes.results.reduce<ResumeData["skills"]>((groups, row) => {
+    skills: rowsOf(skillsRes).reduce<ResumeData["skills"]>((groups, row) => {
       const category = String(row.category ?? "");
       let group = groups.find((g) => g.category === category);
       if (!group) {
@@ -228,7 +230,9 @@ export default defineEventHandler(async (event) => {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "") || "resume";
 
-  return new Response(pdfBytes, {
+  // BodyInit wants ArrayBuffer-backed bytes (TS 5.9 ArrayBufferLike split);
+  // slice() copies into a right-sized buffer
+  return new Response(pdfBytes.slice().buffer as ArrayBuffer, {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="${slug}-resume.pdf"`,

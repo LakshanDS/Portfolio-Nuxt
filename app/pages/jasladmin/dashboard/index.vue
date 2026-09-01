@@ -98,7 +98,7 @@ const chart = computed(() => {
   }));
   const line = points.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
   const area = n
-    ? `${line} L${points[n - 1].x.toFixed(1)},${CHART_H} L${points[0].x.toFixed(1)},${CHART_H} Z`
+    ? `${line} L${points[n - 1]!.x.toFixed(1)},${CHART_H} L${points[0]!.x.toFixed(1)},${CHART_H} Z`
     : "";
   const total = visits.reduce((sum, v) => sum + v.count, 0);
   return { visits, points, line, area, yMax, total };
@@ -300,11 +300,11 @@ definePageMeta({ layout: "jasladmin-dashboard" });
               </div>
 
               <div class="mt-2 flex justify-between font-mono text-[10px] text-dim">
-                <span>{{ fmtDate(chart.visits[0].date) }}</span>
+                <span>{{ fmtDate(chart.visits[0]?.date ?? "") }}</span>
                 <span v-if="chart.visits.length > 2">
-                  {{ fmtDate(chart.visits[Math.floor((chart.visits.length - 1) / 2)].date) }}
+                  {{ fmtDate(chart.visits[Math.floor((chart.visits.length - 1) / 2)]?.date ?? "") }}
                 </span>
-                <span>{{ fmtDate(chart.visits[chart.visits.length - 1].date) }}</span>
+                <span>{{ fmtDate(chart.visits[chart.visits.length - 1]?.date ?? "") }}</span>
               </div>
             </div>
             <p v-else class="py-16 text-center font-mono text-xs italic text-dim">no traffic recorded</p>
