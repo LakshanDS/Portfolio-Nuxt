@@ -4,6 +4,7 @@
 // left third, markdown editor in the right two thirds.
 // Endpoints: GET/PUT /api/projects/:id, POST /api/projects/create, POST /api/upload.
 import { marked } from "marked";
+import { renderMermaidSvg } from "~/utils/mermaid";
 
 definePageMeta({ layout: "jasladmin-dashboard" });
 
@@ -57,6 +58,35 @@ const labelClass = "block font-mono text-[11px] uppercase tracking-[0.14em] text
 const categories = ["Cloud", "Infrastructure", "Full Stack", "DevOps", "AI/ML"];
 
 const renderedContent = computed(() => marked.parse(formData.value.content || "") as string);
+
+const previewRef = ref<HTMLElement | null>(null);
+
+// marked emits ```mermaid fences as plain code blocks — swap them for rendered
+// diagrams once the preview is in the DOM (same shared renderer as the docs page)
+async function renderPreviewMermaids() {
+  const root = previewRef.value;
+  if (!root) return;
+  for (const block of Array.from(root.querySelectorAll<HTMLElement>("code.language-mermaid"))) {
+    const pre = block.parentElement;
+    if (!pre) continue;
+    const chart = (block.textContent ?? "").replace(/\n$/, "");
+    const box = document.createElement("div");
+    try {
+      box.className = "mermaid-box mb-[18px] overflow-x-auto";
+      box.innerHTML = await renderMermaidSvg(chart);
+    } catch {
+      box.className = "mb-[18px] rounded-lg border border-red-500/50 bg-[#141416] p-4 font-mono text-sm text-red-400";
+      box.textContent = chart;
+    }
+    pre.replaceWith(box);
+  }
+}
+
+watch([showPreview, renderedContent], async ([visible]) => {
+  if (!visible) return;
+  await nextTick();
+  await renderPreviewMermaids();
+});
 
 onMounted(async () => {
   if (!isEdit) return;
@@ -333,7 +363,7 @@ async function handleImageUpload(e: Event) {
               class="min-h-[60vh] resize-y font-mono leading-relaxed"
               placeholder="# Project deep-dive&#10;&#10;Write the full project write-up in markdown…"
             />
-            <div v-if="showPreview" class="prose-nightops min-h-[60vh] border border-line p-4" v-html="renderedContent" />
+            <div ref="previewRef" v-if="showPreview" class="prose-nightops min-h-[60vh] border border-line p-4" v-html="renderedContent" />
           </div>
         </section>
       </div>
