@@ -1,75 +1,44 @@
-# Nuxt Minimal Starter
+# Portfolio-Nuxt
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+Personal portfolio of [Lakshan De Silva](https://github.com/lakshanDS) — a terminal-styled portfolio site with a built-in CMS, running entirely on Cloudflare.
+
+Live: <https://portfolio-nuxt.lakshandesilva112.workers.dev>
+
+## Stack
+
+- **Nuxt 3 (SSR) + Nitro** on **Cloudflare Workers**
+- **Cloudflare D1** (SQLite) via **Drizzle ORM** — projects, roadmap, about, homepage settings
+- **Cloudflare R2** for uploads
+- Built-in admin dashboard for editing all site content (projects, roadmap, about, homepage sections)
 
 ## Setup
 
-Make sure to install dependencies:
-
 ```bash
-# npm
-npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
-# bun
 bun install
+bun run dev   # http://localhost:3000
 ```
 
-## Development Server
+Local development uses wrangler's local D1 state (`.wrangler/`), so the API endpoints work out of the box.
 
-Start the development server on `http://localhost:3000`:
+## Database
+
+Schema lives in `server/database/schema/sqlite.ts`, migrations in `server/database/migrations` (wired via `drizzle.config.ts`).
 
 ```bash
-# npm
-npm run dev
-
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
+bunx drizzle-kit generate                        # create a migration from the schema
+bunx wrangler d1 migrations apply DB --local     # apply locally
+bunx wrangler d1 migrations apply DB --remote    # apply to production
 ```
 
-## Production
-
-Build the application for production:
+## Deploy
 
 ```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
 bun run build
+bunx wrangler deploy
 ```
 
-Locally preview production build:
+Expects a `portfolio` D1 database and a `portfolio-uploads` R2 bucket — see `wrangler.jsonc`.
 
-```bash
-# npm
-npm run preview
+## License
 
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+[MIT](./LICENSE)
