@@ -36,47 +36,43 @@ function yearOf(date: string): string {
 
 const sorted = computed(() => [...props.items].sort((a, b) => quarterTime(b.date) - quarterTime(a.date)));
 
-// section loads CAP entries; --more reveals BATCH once, then goes to /roadmap
-const CAP = 6;
-const BATCH = 2;
-const SCROLL_COLLAPSE_PX = 400; // scroll distance from extend point before auto-collapse
-const visibleCount = ref(CAP);
-const extended = ref(false);
-// items within CAP render directly; the rest ride the career-collapse animation
-const baseItems = computed(() => sorted.value.slice(0, CAP));
-const extraItems = computed(() => sorted.value.slice(CAP, visibleCount.value));
-const visibleItems = computed(() => sorted.value.slice(0, visibleCount.value));
-const hiddenCount = computed(() => sorted.value.length - visibleItems.value.length);
-function onMore() {
-  if (!extended.value) {
-    extended.value = true;
-    visibleCount.value += BATCH;
-  } else {
-    navigateTo("/roadmap");
-  }
-}
+// section always shows the 3 most recent years — first two collapse to 2
+// entries, the last to 1. every "view 3 more" and the section --more reveal
+// BATCH entries; a second --more click goes to /roadmap
+const YEARS_SHOWN = 3;
+const COLLAPSED = 2;
+const LAST_COLLAPSED = 1;
+const BATCH = 3;
 
-// collapse the extension once the user scrolls away from where they opened it
-let anchor = 0;
-function onScroll() {
-  if (Math.abs(window.scrollY - anchor) > SCROLL_COLLAPSE_PX) {
-    extended.value = false;
-    visibleCount.value = CAP;
-  }
-}
-watch(visibleCount, (value) => {
-  if (value > CAP) {
-    anchor = window.scrollY;
-    window.addEventListener("scroll", onScroll, { passive: true });
-  } else {
-    window.removeEventListener("scroll", onScroll);
-  }
-});
-onBeforeUnmount(() => window.removeEventListener("scroll", onScroll));
-
-const years = computed(() =>
-  [...new Set(visibleItems.value.map((i) => yearOf(i.date)))].sort((a, b) => Number(b) - Number(a)),
+const allYears = computed(() =>
+  [...new Set(sorted.value.map((i) => yearOf(i.date)))].sort((a, b) => Number(b) - Number(a)),
 );
+const visibleYears = computed(() => allYears.value.slice(0, YEARS_SHOWN));
+const collapsedFor = (index: number) => (index === YEARS_SHOWN - 1 ? LAST_COLLAPSED : COLLAPSED);
+
+const counts = ref(visibleYears.value.map((_, index) => collapsedFor(index)));
+function expandYear(index: number) {
+  const current = counts.value[index] ?? collapsedFor(index);
+  counts.value[index] = Math.min(current + BATCH, collapsedFor(index) + BATCH);
+}
+
+const shownCount = computed(() =>
+  visibleYears.value.reduce((sum, year, index) => {
+    const yearItems = sorted.value.filter((i) => yearOf(i.date) === year).length;
+    return sum + Math.min(counts.value[index] ?? 0, yearItems);
+  }, 0),
+);
+const hiddenCount = computed(() => sorted.value.length - shownCount.value);
+
+let moreExpanded = false;
+function onMore() {
+  if (moreExpanded) {
+    navigateTo("/roadmap");
+  } else {
+    moreExpanded = true;
+    expandYear(YEARS_SHOWN - 1);
+  }
+}
 // header range always reflects the full log, not the visible slice
 const firstYear = computed(() => {
   const all = [...new Set(sorted.value.map((i) => yearOf(i.date)))].sort((a, b) => Number(b) - Number(a));
@@ -109,13 +105,17 @@ const firstYear = computed(() => {
           <span>{{ firstYear }} → {{ new Date().getFullYear() }}</span>
         </div>
 
-        <template v-for="(year, yi) in years" :key="year">
+        <template v-for="(year, yi) in visibleYears" :key="year">
           <CareerYearBlock
             :year="year"
             :is-current-year="Number(year) === new Date().getFullYear()"
             :is-first="yi === 0"
-            :items="baseItems.filter((i) => yearOf(i.date) === year)"
-            :overflow-items="extraItems.filter((i) => yearOf(i.date) === year)"
+            :items="sorted.filter((i) => yearOf(i.date) === year)"
+            :collapsed="collapsedFor(yi)"
+            :visible-count="counts[yi] ?? 0"
+            :show-buttons="yi < YEARS_SHOWN - 1"
+            @more="expandYear(yi)"
+            @less="counts[yi] = collapsedFor(yi)"
           />
         </template>
 
@@ -125,7 +125,7 @@ const firstYear = computed(() => {
             class="block w-full border border-dashed border-line py-1.5 text-center font-mono text-[11.5px] text-dim transition-colors hover:border-phosphor/50 hover:text-phosphor"
             @click="onMore"
           >
-            --more +{{ Math.min(BATCH, hiddenCount) }} · {{ hiddenCount }} hidden · <span class="text-phosphor/70">--all →</span>
+            --more +{{ BATCH }} · {{ hiddenCount }} hidden · <span class="text-phosphor/70">--all →</span>
           </button>
         </div>
       </div>
