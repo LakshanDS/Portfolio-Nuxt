@@ -2,8 +2,6 @@
 
 Personal portfolio of [Lakshan De Silva](https://github.com/lakshanDS) — a terminal-styled portfolio site with a built-in CMS, running entirely on Cloudflare.
 
-Live: <https://portfolio-nuxt.lakshandesilva112.workers.dev>
-
 ## Stack
 
 - **Nuxt 3 (SSR) + Nitro** on **Cloudflare Workers**
