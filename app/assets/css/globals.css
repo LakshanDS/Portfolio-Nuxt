@@ -587,3 +587,19 @@ select option {
 .prose-nightops blockquote { border-left: 2px solid var(--color-line); padding-left: 0.75rem; }
 .prose-nightops a { color: var(--color-phosphor); transition: color 0.2s; }
 .prose-nightops a:hover { color: var(--color-bright); }
+
+/* mermaid diagrams (docs pages + editor preview share .mermaid-box) — rounded
+   node/subgraph corners and framed edge-label pills; colors come from the
+   theme in app/utils/mermaid.ts */
+/* flex centering keeps the diagram centered in both axes inside any wrapper */
+.mermaid-box { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px; }
+.mermaid-box .node rect,
+.mermaid-box .node polygon { rx: 10px; ry: 10px; }
+/* mermaid sizes the svg to the container (useMaxWidth) — center the ones
+   narrower than the box */
+.mermaid-box svg { display: block; margin-inline: auto; }
+/* mermaid injects an id-scoped stylesheet that beats plain class rules */
+.mermaid-box .flowchart-link { stroke-width: 1.5px !important; }
+.mermaid-box .cluster rect { rx: 12px; ry: 12px; }
+.mermaid-box .edgeLabel rect,
+.mermaid-box .edgeLabel p { stroke: #3a3f46; }
