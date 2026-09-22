@@ -1,5 +1,6 @@
 <script setup lang="ts">
 type HeroSettings = {
+  tagline?: string;
   title?: string;
   description?: string;
   primaryButtonText?: string;
@@ -70,8 +71,8 @@ const descriptionParts = computed(() => (props.settings.description || "").split
   <section class="relative grid grid-cols-[1.25fr_.9fr] items-start gap-[60px] border-b border-line pb-[72px] pt-[88px] max-md:grid-cols-1 max-md:gap-10">
     <div class="ops-glow" aria-hidden="true" />
     <div>
-      <div class="rise mb-6 font-mono text-[12px] uppercase tracking-[0.22em] text-amber" style="--d: 0ms">
-        // full-stack · devops · cloud
+      <div v-if="settings.tagline" class="rise mb-6 font-mono text-[12px] uppercase tracking-[0.22em] text-amber" style="--d: 0ms">
+        {{ settings.tagline }}
       </div>
       <h1
         class="rise text-[clamp(2.7rem,6vw,5rem)] font-bold leading-[1.02] tracking-[-0.025em] text-bright"

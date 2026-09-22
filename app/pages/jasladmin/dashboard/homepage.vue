@@ -8,6 +8,7 @@ definePageMeta({ layout: "jasladmin-dashboard" });
 
 interface HomeSettings {
   hero: {
+    tagline: string;
     title: string;
     description: string;
     primaryButtonText: string;
@@ -35,6 +36,7 @@ interface HomeSettings {
 // structural empty state — real defaults live in server/api/home-settings.get.ts
 const emptySettings = (): HomeSettings => ({
   hero: {
+    tagline: "",
     title: "",
     description: "",
     primaryButtonText: "",
@@ -226,6 +228,12 @@ async function resetSettings() {
 
 // homepage section toggles are no longer editable from the dashboard
 const heroFields: { key: keyof HomeSettings["hero"]; label: string; placeholder?: string; hint?: string }[] = [
+  {
+    key: "tagline",
+    label: "hero tag",
+    placeholder: "// full-stack · devops · cloud",
+    hint: "the amber kicker above the title",
+  },
   {
     key: "title",
     label: "title",
