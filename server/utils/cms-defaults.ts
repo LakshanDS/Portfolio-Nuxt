@@ -47,6 +47,7 @@ export const defaultRoadmapSettings = {
 
 export const defaultHomepageSettings = {
   hero: {
+    tagline: "// full-stack · devops · cloud",
     title: "Hi, I'm Lakshan.\\n\\\\I build software for people.\\\\",
     description:
       "Turning complex requirements into fast code, automated pipelines, and zero-downtime deployments.",
